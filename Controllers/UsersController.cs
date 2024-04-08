@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using LiveChat.Models;
-using System.Data.SqlClient;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Cryptography;
 using System.Data;
@@ -10,6 +9,10 @@ using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.VisualBasic.CompilerServices;
+using Supabase;
+using Supabase.Interfaces;
+using Microsoft.Extensions.Configuration;
+
 
 namespace LiveChat.Controllers
 {
@@ -19,13 +22,15 @@ namespace LiveChat.Controllers
     public class UsersController : ControllerBase
 
     {
-        private readonly string _connectionString;
+        private readonly IConfiguration _configuration;
+        private readonly Supabase.Client _supabaseClient;
 
-        public UsersController(IConfiguration configuration)
+        public UsersController(IConfiguration configuration, Client supabaseClient)
         {
-
-            _connectionString = configuration["ConnectionStrings:Mydatabase"] ?? "";
+            _configuration = configuration;
+            _supabaseClient = supabaseClient;
         }
+
         private void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
         {
             using (var hmac = new HMACSHA512())
@@ -34,7 +39,7 @@ namespace LiveChat.Controllers
                 passwordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
             }
         }
-        
+
         private bool VertifyPasswordHash(string password, byte[] passwordHash, byte[] passwordSalt)
         {
             using (var hmac = new HMACSHA512(passwordSalt))
@@ -44,31 +49,25 @@ namespace LiveChat.Controllers
             }
         }
 
-        private string CreateToken(Person person)
+        private string CreateToken(User person)
         {
-            string x = (person.phoneNo).ToString();
-            string Role = "Default";
-
-            if (person.phoneNo == 977)
-            {
-                Role = "Admin";
-            }
-            
+            var secretsConfig = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory()) // Set the base path where secrets.json is located
+                .AddJsonFile("Secret/secret.json", optional: true, reloadOnChange: true)
+                .Build();
             var claims = new[]
             {
-                new Claim("phoneNo", x),
-                new Claim(ClaimTypes.Role, Role)
+                new Claim("phoneNo", person.PhoneNo)
             };
             
-           
-            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes("Planning outdoor recreational activities can be a fun and rewarding experience. Here are some steps to help you plan and organize outdoor recreational activities:\r\n1. Determine the Purpose: - Start by defining the purpose of the outdoor recreational activity. Is it for relaxation, exercise, team-building, or skill-building? Understanding the purpose will help you choose the right activities.\r\n2. Choose Suitable Activities: - Consider the preferences and abilities of the participants when selecting outdoor activities. Some popular outdoor recreational activities include hiking, camping, biking, kayaking, fishing, bird watching, and picnicking.\r\n3. Select a Location:- Choose a suitable location for the outdoor activity based on factors such as distance, accessibility, facilities, scenery, and safety. National parks, state parks, beaches, forests, and nature reserves are great options for outdoor activities"));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretsConfig["AppSettings:Token"]));
 
             var cred = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
             var token = new JwtSecurityToken(
                 claims: claims,
 
-                expires: DateTime.Now.AddMinutes(1),
+                expires: DateTime.Now.AddMinutes(30),
                 signingCredentials:cred
                 );
 
@@ -78,7 +77,7 @@ namespace LiveChat.Controllers
         }
 
         [HttpPost("RefershToken")]
-        public IActionResult RefreshToken([FromBody] Person person)
+        public IActionResult RefreshToken([FromBody] User person)
         {
             
             // Generate new JWT token
@@ -86,40 +85,162 @@ namespace LiveChat.Controllers
 
             return Ok(newToken);
         }
+        
+        [HttpPost("login")]
+        public async Task<IActionResult> Loginn(User person)
+        {
+            try
+            {
+                var response = await _supabaseClient.From<Userdto>().Where(n => n.PhoneNo == person.PhoneNo).Get();
+                
+                try
+                {
+                    var hey = response.Models.FirstOrDefault();
+                    
+                    if (hey == null)
+                    {
+                        return BadRequest("Phone Number Invalid");
+                    }
+                    var x = new UserCustomModel
+                    {
+                        Id = hey.Id,
+                        PhoneNo = hey.PhoneNo,
+                        PasswordHash = hey.PasswordHash,
+                        PasswordSalt = hey.PasswordSalt,
+                        Online = hey.Online,
+                        Deleted = hey.Deleted
+                    };
 
+
+                    if (!VertifyPasswordHash(person.Password, x.PasswordHash, x.PasswordSalt))
+                    {
+                        return BadRequest("Wrong Password");
+                    }
+
+                    string token = CreateToken(person);
+                    
+                    return Ok(token);
+                }
+                catch (Exception)
+                {
+                    return BadRequest("No hey");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("No Connection, Please Try again");
+            }
+        }
         // Post 
         [HttpPost]
-        public IActionResult CreateUser ( Person person)
+        public async Task<IActionResult> CreateUserAsync ([FromBody] User person)
         {
 
-            CreatePasswordHash(person.password, out byte[] passwordHash, out byte[] passwordSalt);
-           
-            Console.WriteLine("Post");
-                using (var connection = new SqlConnection(_connectionString)) 
+            CreatePasswordHash(person.Password, out byte[] passwordHash, out byte[] passwordSalt);
+            
+            var userdto = new Userdto
+            {
+                PhoneNo = person.PhoneNo,
+                PasswordHash = passwordHash,
+                PasswordSalt = passwordSalt
+            };
+            
+            try
+            {
+                var response = await _supabaseClient.From<Userdto>().Insert(userdto);
+                try
                 {
+                    var hey = response.Models.First();
+                    return Ok("Successfully " + hey.Id +" inserted!");
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Inserted but not giving back the inserted id");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("Can't connect to server");
+            }
 
-
-                    connection.Open();
-                    string sql = "INSERT INTO Accounts " +
-                        "(phoneNo,passwordHash,passwordSalt) VALUES" +
-                        "(@phoneNo,@passwordHash,@passwordSalt)";
-                    using (var command = new SqlCommand(sql, connection))
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetUser()
+        {
+           
+                try
+                {
+                    var response = await _supabaseClient.From<Userdto>().Get();
+                    try
                     {
-                    
-                    command.Parameters.AddWithValue("@phoneNo", person.phoneNo);
-                    command.Parameters.AddWithValue("@passwordHash", passwordHash);
-                    command.Parameters.AddWithValue("@passwordSalt", passwordSalt);
-
-                    command.ExecuteNonQuery();  
+                        var hey = response.Models.Count;
+                        return Ok(hey);
+                    }
+                    catch (Exception)
+                    {
+                        return BadRequest(response);
                     }
                 }
-           
-           
-            return Ok(person);
-        }
+                catch (Exception)
+                {
+                    return BadRequest("First: No Response");
+                }
+               
+               
 
+               
+           
+        }
+        //Get by id
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetUser(long id)
+        {
+
+            try
+            {
+                var response = await _supabaseClient.From<Userdto>().Where(n=> n.Id == id).Get();
+                Console.WriteLine("response found");
+                try
+                {
+                    var hey = response.Models.FirstOrDefault();
+                    if (hey == null)
+                    {
+                        return BadRequest("hey empty so, Invalid Id");
+                    }
+
+                    Console.WriteLine("hey found");
+
+                    var x = new User
+                    {
+                        
+                        PhoneNo = hey.PhoneNo,
+                        Password = hey.PasswordHash.ToString()
+                        
+                    };
+                    Console.WriteLine("x formed");
+                    return Ok(x);
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("No model");
+                    
+                    return BadRequest(response);
+                }
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("No Connection");
+                return BadRequest("First: No Response");
+            }
+
+
+
+
+
+        }
+        /*
         [HttpPost("login")]
-        public IActionResult Loginn(Person person)
+        public IActionResult Loginn(User person)
         {
 
             using (var connection = new SqlConnection(_connectionString))
@@ -142,7 +263,7 @@ namespace LiveChat.Controllers
 
                             string token= CreateToken(person);
                             return Ok(token);
-  
+
                         }
                         else
                         {
@@ -150,7 +271,7 @@ namespace LiveChat.Controllers
                         }
                     }
                 }
-                
+
             }
 
 
@@ -164,14 +285,14 @@ namespace LiveChat.Controllers
             var customClaimValue = User.FindFirstValue("phoneNo");
             if (customClaimValue == "0")
             {
-               return Ok("i am just a demo"); 
+               return Ok("i am just a demo");
             }
 
-            if (customClaimValue == "977") 
+            if (customClaimValue == "977")
             {
                 return Ok("I am fonka");
             }
-            
+
             List<int> AllPersons = new List<int>();
             Console.WriteLine("GEt all");
             using (var connection = new SqlConnection(_connectionString))
@@ -186,25 +307,25 @@ namespace LiveChat.Controllers
                     {
                         while (reader.Read())
                         {
-                            Persondto persondto = new Persondto();
-                            
+                            Userdto persondto = new Userdto();
+
                             persondto.phoneNo = reader.GetInt32(0);
-                         
+
 
                             AllPersons.Add(persondto.phoneNo);
                         }
 
                     }
-                    
- 
+
+
                 }
             }
 
 
             return Ok(AllPersons);
         }
-        
-        /*
+
+
         // Get by id
         [HttpGet("{id}")]
         public IActionResult GetUserById(int id)
@@ -323,5 +444,6 @@ namespace LiveChat.Controllers
 
         }
         */
+
     }
 }
