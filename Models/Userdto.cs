@@ -12,17 +12,28 @@ namespace LiveChat.Models
     {
         [PrimaryKey("Id",false)] public long Id { get; set; }
 
-        [Column("created_at")] public DateTime CreatedAt { get; set; } = DateTime.Now;
+        [Column("created_at")] public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        
+        [Required]
+        [Column("Phone_No")] public string? PhoneNo { get; set; } = null;
 
-        [Column("Phone_No")] public string PhoneNo { get; set; } = "";
+        [Required]
+        [Column("PasswordHash")] public byte[]? PasswordHash { get; set; } 
 
-        [Column("PasswordHash")] public byte[] PasswordHash { get; set; } 
-
-        [Column("PasswordSalt")] public byte[] PasswordSalt { get; set; }
+        [Column("PasswordSalt")] public byte[]? PasswordSalt { get; set; }
 
         [Column("Online")] public bool Online { get; set; } = false;
 
         [Column("Deleted")] public bool Deleted { get; set; } = false;
+
+        [Column("Last_Seen")] public DateTime Last_Seen { get; set; } = DateTime.UtcNow;
+
+        [Column("Refresh_Token")] public string? Refresh_Token { get; set; } = null;
+        [Column("Token_Created")] public DateTime Token_Created { get; set; } = DateTime.UtcNow;
+        [Column("Token_Expiry")] public DateTime Token_Expiry { get; set; } = DateTime.UtcNow;
+
+
+
 
 
     }

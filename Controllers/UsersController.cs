@@ -49,7 +49,7 @@ namespace LiveChat.Controllers
             }
         }
 
-        private string CreateToken(User person)
+        private string CreateToken(long userId)
         {
             var secretsConfig = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory()) // Set the base path where secrets.json is located
@@ -57,7 +57,7 @@ namespace LiveChat.Controllers
                 .Build();
             var claims = new[]
             {
-                new Claim("phoneNo", person.PhoneNo)
+                new Claim("UserId", userId.ToString())
             };
             
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretsConfig["AppSettings:Token"]));
@@ -76,16 +76,62 @@ namespace LiveChat.Controllers
             return jwt;
         }
 
-        [HttpPost("RefershToken")]
-        public IActionResult RefreshToken([FromBody] User person)
+        private Refresh_Token GenerateRefreshToken()
         {
-            
-            // Generate new JWT token
-            var newToken = CreateToken(person);
-
-            return Ok(newToken);
+            var refreshToken = new Refresh_Token
+            {
+                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+                Expires = DateTime.Now.AddDays(1),
+                Created = DateTime.UtcNow
+            };
+            return refreshToken;
         }
-        
+
+        [HttpPost("refreshToken/{id}")]
+        public async Task<IActionResult> RefreshTokenAsync([FromBody] Refresh_Token refreshToken, long id)
+        {
+            // validating Refresh token with the id
+            try
+            {
+                var response = await _supabaseClient.From<Userdto>().Where(n => n.Id == id).Get();
+
+                try
+                {
+                    var hey = response.Models.FirstOrDefault();
+
+                    if (hey == null)
+                    {
+                        return BadRequest("Invalid Id");
+                    }
+
+                    if (hey.Refresh_Token != refreshToken.Token)
+                    {
+                        return Unauthorized("Invalid Refresh Token");
+                    }
+                    else if (hey.Token_Expiry < DateTime.UtcNow)
+                    {
+                        return Unauthorized("your Refresh token has expired, sign in again");
+                    }
+
+                    string newToken = CreateToken(id);
+
+                    return Ok(newToken);
+
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Invalid ID");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("No Connection, Please Try again");
+            }
+
+            
+        }
+
+
         [HttpPost("login")]
         public async Task<IActionResult> Loginn(User person)
         {
@@ -101,29 +147,40 @@ namespace LiveChat.Controllers
                     {
                         return BadRequest("Phone Number Invalid");
                     }
-                    var x = new UserCustomModel
-                    {
-                        Id = hey.Id,
-                        PhoneNo = hey.PhoneNo,
-                        PasswordHash = hey.PasswordHash,
-                        PasswordSalt = hey.PasswordSalt,
-                        Online = hey.Online,
-                        Deleted = hey.Deleted
-                    };
-
-
-                    if (!VertifyPasswordHash(person.Password, x.PasswordHash, x.PasswordSalt))
+                    if (!VertifyPasswordHash(person.Password, hey.PasswordHash, hey.PasswordSalt))
                     {
                         return BadRequest("Wrong Password");
                     }
+                    string token = CreateToken(hey.Id);
+                    var refreshToken = GenerateRefreshToken();
+                    try
+                    {
+                        
+                        var responseUpdate = await _supabaseClient.From<Userdto>()
+                            .Where(n => n.PhoneNo == person.PhoneNo)
+                            .Set(u => u.Refresh_Token, refreshToken.Token)
+                            .Set(u => u.Token_Created, refreshToken.Created)
+                            .Set(u => u.Token_Expiry, refreshToken.Expires)
+                            .Update();
+                    }
+                    catch (Exception)
+                    {
+                        return BadRequest("No Connection for updating the refresh token");
+                    }
 
-                    string token = CreateToken(person);
                     
-                    return Ok(token);
+                    var result = new
+                    {
+                        Id = hey.Id,
+                        Token = token,
+                        Refresh_Token=refreshToken
+                    };
+
+                    return Ok(result);
                 }
                 catch (Exception)
                 {
-                    return BadRequest("No hey");
+                    return BadRequest("Problem when querying the database");
                 }
             }
             catch (Exception)
@@ -132,17 +189,21 @@ namespace LiveChat.Controllers
             }
         }
         // Post 
-        [HttpPost]
+        [HttpPost("register")]
         public async Task<IActionResult> CreateUserAsync ([FromBody] User person)
         {
-
             CreatePasswordHash(person.Password, out byte[] passwordHash, out byte[] passwordSalt);
-            
+
+            var refreshToken = GenerateRefreshToken();
             var userdto = new Userdto
             {
                 PhoneNo = person.PhoneNo,
                 PasswordHash = passwordHash,
-                PasswordSalt = passwordSalt
+                PasswordSalt = passwordSalt,
+                Refresh_Token = refreshToken.Token,
+                Token_Expiry = refreshToken.Expires,
+                Token_Created = refreshToken.Created
+                
             };
             
             try
@@ -151,11 +212,20 @@ namespace LiveChat.Controllers
                 try
                 {
                     var hey = response.Models.First();
-                    return Ok("Successfully " + hey.Id +" inserted!");
+
+                    string token = CreateToken(hey.Id);
+                    var result = new
+                    {
+                        Id = hey.Id,
+                        Token = token,
+                        RefreshToken=hey.Refresh_Token
+                    };
+
+                    return Ok(result);
                 }
                 catch (Exception)
                 {
-                    return BadRequest("Inserted but not giving back the inserted id");
+                    return BadRequest("Invalid phoneNo");
                 }
             }
             catch (Exception)
@@ -164,6 +234,14 @@ namespace LiveChat.Controllers
             }
 
         }
+
+
+
+
+
+
+
+
         [HttpGet]
         public async Task<IActionResult> GetUser()
         {
@@ -192,7 +270,7 @@ namespace LiveChat.Controllers
            
         }
         //Get by id
-        [HttpGet("{id}")]
+        [HttpGet("{id}"),Authorize]
         public async Task<IActionResult> GetUser(long id)
         {
 
