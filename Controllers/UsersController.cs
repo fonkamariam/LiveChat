@@ -12,7 +12,8 @@ using Microsoft.VisualBasic.CompilerServices;
 using Supabase;
 using Supabase.Interfaces;
 using Microsoft.Extensions.Configuration;
-
+using System.Net;
+using System.Net.Mail;
 
 namespace LiveChat.Controllers
 {
@@ -49,6 +50,39 @@ namespace LiveChat.Controllers
             }
         }
 
+        private bool SendEmail(string ToEmail,int Code)
+        {
+            var secretsConfig = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory()) // Set the base path where secrets.json is located
+                .AddJsonFile("Secret/secret.json", optional: true, reloadOnChange: true)
+                .Build();
+            string fromEmail = secretsConfig["Email:EmailAccount"];
+            string password = secretsConfig["Email:EmailPassword"];
+
+            MailMessage message = new MailMessage();
+
+            message.From = new MailAddress(fromEmail);
+            message.Subject = "Vertification Code";
+            message.To.Add(new MailAddress(ToEmail));
+            message.Body = $"Your Verticfication Code:{Code}.";
+
+
+            var smtpClient = new SmtpClient("smtp.gmail.com")
+            {
+                Port = 587,
+                Credentials = new NetworkCredential(fromEmail, password),
+                EnableSsl = true,
+            };
+            try
+            {
+                smtpClient.Send(message);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
         private string CreateToken(long userId)
         {
             var secretsConfig = new ConfigurationBuilder()
@@ -202,7 +236,8 @@ namespace LiveChat.Controllers
                 PasswordSalt = passwordSalt,
                 Refresh_Token = refreshToken.Token,
                 Token_Expiry = refreshToken.Expires,
-                Token_Created = refreshToken.Created
+                Token_Created = refreshToken.Created,
+                Email = person.Email
                 
             };
             
@@ -235,6 +270,124 @@ namespace LiveChat.Controllers
 
         }
 
+        [HttpPost("ForgotPassword")]
+        public async Task<IActionResult> ForgotPassword(Email email)
+        {
+
+            try
+            {
+                var response = await _supabaseClient.From<Userdto>().Where(n => n.Email == email.EmailGet).Get();
+
+                try
+                {
+                    var hey = response.Models.FirstOrDefault();
+
+                    if (hey == null)
+                    {
+                        return BadRequest("Email Invalid");
+                    }
+                    //Generate 5 code number
+                    Random random = new Random();
+                    int code = random.Next(10000, 100000);
+                    // send email 
+                    try
+                    {
+                        var CheckEmail = await _supabaseClient.From<Userdto>()
+                            .Where(n => n.Email == email.EmailGet).Get();
+                    }
+                    catch (Exception)
+                    {
+                        return BadRequest("Invaild Email Address");
+                    }
+                    
+                    bool x = SendEmail(email.EmailGet, code);
+                    if (x == false)
+                    {
+                        return BadRequest("Couldn't Send email,Try again");
+                    }
+                    // update vertification Database
+                    try
+                    {
+
+                        var responseUpdate = await _supabaseClient.From<Userdto>()
+                            .Where(n => n.Email == email.EmailGet)
+                            .Set(u => u.V_Number_Value, code)
+                            .Set(u => u.V_Number_Created_At,DateTime.UtcNow )
+                            .Set(u => u.V_Number_Expiry, DateTime.Now.AddMinutes(10))
+                            .Update();
+
+                        return Ok("Vertification Sent");
+                    }
+                    catch (Exception)
+                    {
+                        return BadRequest("No Connection for updating the Vertification process");
+                    }
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Problem when querying the database");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("No Connection, Please Try again");
+            }
+        }
+
+        [HttpPost("UpdatePasswordThroughCode")]
+        public async Task<IActionResult> UpdatePasswordThroughCode(NewPassword newPassword)
+        {
+
+            try
+            {
+                var response = await _supabaseClient.From<Userdto>().Where(n => n.Email == newPassword.Email).Get();
+
+                try
+                {
+                    var hey = response.Models.FirstOrDefault();
+
+                    if (hey == null)
+                    {
+                        return BadRequest("Email Invalid");
+                    }
+                    // update Vertification Database
+                    if (hey.V_Number_Value != 0 && hey.V_Number_Expiry > DateTime.UtcNow)
+                    {
+                        CreatePasswordHash(newPassword.Password, out byte[] passwordHash, out byte[] passwordSalt);
+
+                        try
+                        {
+
+                            var responseUpdate = await _supabaseClient.From<Userdto>()
+                                .Where(n => n.Email == newPassword.Email)
+                                .Set(u => u.PasswordHash, passwordHash)
+                                .Set(u => u.PasswordSalt, passwordSalt)
+                                .Set(u => u.V_Number_Expiry, DateTime.UtcNow)
+                                .Set(u => u.V_Number_Value, 0)
+                                .Set(u => u.V_Number_Created_At, DateTime.UtcNow)
+                                .Update();
+
+                            return Ok("Succssefully Updated!");
+                        }
+                        catch (Exception)
+                        {
+                            return BadRequest("No Connection for updating the Password process");
+                        }
+                    }
+
+                    return BadRequest("Invalid , either code exipred or lying!");
+
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Problem when querying the database");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("No Connection, Please Try again");
+            }
+        }
 
 
 

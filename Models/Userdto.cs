@@ -18,6 +18,9 @@ namespace LiveChat.Models
         [Column("Phone_No")] public string? PhoneNo { get; set; } = null;
 
         [Required]
+        [Column("Email")] public string? Email { get; set; }
+
+        [Required]
         [Column("PasswordHash")] public byte[]? PasswordHash { get; set; } 
 
         [Column("PasswordSalt")] public byte[]? PasswordSalt { get; set; }
@@ -32,9 +35,9 @@ namespace LiveChat.Models
         [Column("Token_Created")] public DateTime Token_Created { get; set; } = DateTime.UtcNow;
         [Column("Token_Expiry")] public DateTime Token_Expiry { get; set; } = DateTime.UtcNow;
 
-
-
-
-
+        [Column("V_Number_Value")] public long? V_Number_Value { get; set; } = 0;
+        [Column("V_Number_Created_At")] public DateTime V_Number_Created_At { get; set; } = DateTime.UtcNow;
+        [Column("V_Number_Expiry")] public DateTime V_Number_Expiry { get; set; } = DateTime.UtcNow;
+        
     }
 }
