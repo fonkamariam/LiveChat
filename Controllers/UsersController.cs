@@ -50,7 +50,7 @@ namespace LiveChat.Controllers
             }
         }
 
-        private bool SendEmail(string ToEmail,int Code)
+        private bool SendEmail(string ToEmail, int Code)
         {
             var secretsConfig = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory()) // Set the base path where secrets.json is located
@@ -83,7 +83,8 @@ namespace LiveChat.Controllers
                 return false;
             }
         }
-        private string CreateToken(long userId)
+
+        private string CreateToken(string phoneNumber)
         {
             var secretsConfig = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory()) // Set the base path where secrets.json is located
@@ -91,9 +92,9 @@ namespace LiveChat.Controllers
                 .Build();
             var claims = new[]
             {
-                new Claim("UserId", userId.ToString())
+                new Claim("PhoneNumber", phoneNumber)
             };
-            
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretsConfig["AppSettings:Token"]));
 
             var cred = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
@@ -102,8 +103,8 @@ namespace LiveChat.Controllers
                 claims: claims,
 
                 expires: DateTime.Now.AddMinutes(30),
-                signingCredentials:cred
-                );
+                signingCredentials: cred
+            );
 
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
 
@@ -147,7 +148,7 @@ namespace LiveChat.Controllers
                         return Unauthorized("your Refresh token has expired, sign in again");
                     }
 
-                    string newToken = CreateToken(id);
+                    string newToken = CreateToken(hey.PhoneNo);
 
                     return Ok(newToken);
 
@@ -162,7 +163,7 @@ namespace LiveChat.Controllers
                 return BadRequest("No Connection, Please Try again");
             }
 
-            
+
         }
 
 
@@ -171,25 +172,28 @@ namespace LiveChat.Controllers
         {
             try
             {
-                var response = await _supabaseClient.From<Userdto>().Where(n => n.PhoneNo == person.PhoneNo).Get();
-                
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == person.PhoneNo && n.Deleted == false).Get();
+
                 try
                 {
                     var hey = response.Models.FirstOrDefault();
-                    
+
                     if (hey == null)
                     {
                         return BadRequest("Phone Number Invalid");
                     }
+
                     if (!VertifyPasswordHash(person.Password, hey.PasswordHash, hey.PasswordSalt))
                     {
                         return BadRequest("Wrong Password");
                     }
-                    string token = CreateToken(hey.Id);
+
+                    string token = CreateToken(hey.PhoneNo);
                     var refreshToken = GenerateRefreshToken();
                     try
                     {
-                        
+
                         var responseUpdate = await _supabaseClient.From<Userdto>()
                             .Where(n => n.PhoneNo == person.PhoneNo)
                             .Set(u => u.Refresh_Token, refreshToken.Token)
@@ -202,12 +206,12 @@ namespace LiveChat.Controllers
                         return BadRequest("No Connection for updating the refresh token");
                     }
 
-                    
+
                     var result = new
                     {
                         Id = hey.Id,
                         Token = token,
-                        Refresh_Token=refreshToken
+                        Refresh_Token = refreshToken
                     };
 
                     return Ok(result);
@@ -222,9 +226,10 @@ namespace LiveChat.Controllers
                 return BadRequest("No Connection, Please Try again");
             }
         }
+
         // Post 
         [HttpPost("register")]
-        public async Task<IActionResult> CreateUserAsync ([FromBody] User person)
+        public async Task<IActionResult> CreateUserAsync([FromBody] User person)
         {
             CreatePasswordHash(person.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
@@ -238,9 +243,9 @@ namespace LiveChat.Controllers
                 Token_Expiry = refreshToken.Expires,
                 Token_Created = refreshToken.Created,
                 Email = person.Email
-                
+
             };
-            
+
             try
             {
                 var response = await _supabaseClient.From<Userdto>().Insert(userdto);
@@ -248,12 +253,12 @@ namespace LiveChat.Controllers
                 {
                     var hey = response.Models.First();
 
-                    string token = CreateToken(hey.Id);
+                    string token = CreateToken(hey.PhoneNo);
                     var result = new
                     {
                         Id = hey.Id,
                         Token = token,
-                        RefreshToken=hey.Refresh_Token
+                        RefreshToken = hey.Refresh_Token
                     };
 
                     return Ok(result);
@@ -286,6 +291,7 @@ namespace LiveChat.Controllers
                     {
                         return BadRequest("Email Invalid");
                     }
+
                     //Generate 5 code number
                     Random random = new Random();
                     int code = random.Next(10000, 100000);
@@ -299,12 +305,13 @@ namespace LiveChat.Controllers
                     {
                         return BadRequest("Invaild Email Address");
                     }
-                    
+
                     bool x = SendEmail(email.EmailGet, code);
                     if (x == false)
                     {
                         return BadRequest("Couldn't Send email,Try again");
                     }
+
                     // update vertification Database
                     try
                     {
@@ -312,7 +319,7 @@ namespace LiveChat.Controllers
                         var responseUpdate = await _supabaseClient.From<Userdto>()
                             .Where(n => n.Email == email.EmailGet)
                             .Set(u => u.V_Number_Value, code)
-                            .Set(u => u.V_Number_Created_At,DateTime.UtcNow )
+                            .Set(u => u.V_Number_Created_At, DateTime.UtcNow)
                             .Set(u => u.V_Number_Expiry, DateTime.Now.AddMinutes(10))
                             .Update();
 
@@ -350,6 +357,7 @@ namespace LiveChat.Controllers
                     {
                         return BadRequest("Email Invalid");
                     }
+
                     // update Vertification Database
                     if (hey.V_Number_Value != 0 && hey.V_Number_Expiry > DateTime.UtcNow)
                     {
@@ -389,292 +397,202 @@ namespace LiveChat.Controllers
             }
         }
 
-
-
-
-
-
-
-        [HttpGet]
-        public async Task<IActionResult> GetUser()
+        // Change Password after logged in
+        [HttpPost("ChangePassword"), Authorize]
+        public async Task<IActionResult> ChangePassword(ChangePassword changePassword)
         {
-           
-                try
-                {
-                    var response = await _supabaseClient.From<Userdto>().Get();
-                    try
-                    {
-                        var hey = response.Models.Count;
-                        return Ok(hey);
-                    }
-                    catch (Exception)
-                    {
-                        return BadRequest(response);
-                    }
-                }
-                catch (Exception)
-                {
-                    return BadRequest("First: No Response");
-                }
-               
-               
-
-               
-           
-        }
-        //Get by id
-        [HttpGet("{id}"),Authorize]
-        public async Task<IActionResult> GetUser(long id)
-        {
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
+            {
+                return BadRequest("Invalid Token");
+            }
 
             try
             {
-                var response = await _supabaseClient.From<Userdto>().Where(n=> n.Id == id).Get();
-                Console.WriteLine("response found");
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
                 try
                 {
                     var hey = response.Models.FirstOrDefault();
+
                     if (hey == null)
                     {
-                        return BadRequest("hey empty so, Invalid Id");
+                        return BadRequest("Token Invalid");
                     }
 
-                    Console.WriteLine("hey found");
-
-                    var x = new User
+                    // update Password
+                    try
                     {
-                        
-                        PhoneNo = hey.PhoneNo,
-                        Password = hey.PasswordHash.ToString()
-                        
-                    };
-                    Console.WriteLine("x formed");
-                    return Ok(x);
+                        if (phoneNumberClaim.ToString() != changePassword.OldPassword)
+                        {
+                            return BadRequest("Old password Invalid");
+                        }
+
+                        CreatePasswordHash(changePassword.NewPassword, out byte[] passwordHash,
+                            out byte[] passwordSalt);
+
+
+                        var responseUpdate = await _supabaseClient.From<Userdto>()
+                            .Where(n => n.PhoneNo == phoneNumberClaim.ToString())
+                            .Set(u => u.PasswordHash, passwordHash)
+                            .Set(u => u.PasswordSalt, passwordSalt)
+                            .Update();
+                        return Ok("Succssefully Updated Password!");
+                    }
+                    catch (Exception)
+                    {
+                        return BadRequest("No Connection for updating the Password process");
+                    }
                 }
                 catch (Exception)
                 {
-                    Console.WriteLine("No model");
-                    
-                    return BadRequest(response);
+                    return BadRequest("Problem when querying the database");
                 }
             }
             catch (Exception)
             {
-                Console.WriteLine("No Connection");
-                return BadRequest("First: No Response");
+                return BadRequest("No Connection, Please Try again");
             }
-
-
-
-
-
-        }
-        /*
-        [HttpPost("login")]
-        public IActionResult Loginn(User person)
-        {
-
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                connection.Open();
-                string sql = "SELECT passwordHash,passwordSalt FROM Accounts WHERE phoneNo = @phoneNo";
-                using (var command = new SqlCommand(sql, connection))
-                {
-                    command.Parameters.AddWithValue("@phoneNo", person.phoneNo);
-                    using (var reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            byte[] hashBytes = (byte[])reader[0];
-                            byte[] saltBytes = (byte[])reader[1];
-                            if (!VertifyPasswordHash(person.password, hashBytes, saltBytes))
-                            {
-                                return BadRequest("Wrong Password");
-                            }
-
-                            string token= CreateToken(person);
-                            return Ok(token);
-
-                        }
-                        else
-                        {
-                            return BadRequest("Invalid Phone Number");
-                        }
-                    }
-                }
-
-            }
-
-
         }
 
-
-        //Get all
-        [HttpGet, Authorize(Roles = "Admin")]
-        public IActionResult GetallUser()
+        [HttpPost("ChangePhoneNumber"), Authorize]
+        public async Task<IActionResult> ChangePassword(ChangePhoneNumber changePhoneNumber)
         {
-            var customClaimValue = User.FindFirstValue("phoneNo");
-            if (customClaimValue == "0")
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
             {
-               return Ok("i am just a demo");
+                return BadRequest("Invalid Token");
             }
 
-            if (customClaimValue == "977")
+            try
             {
-                return Ok("I am fonka");
-            }
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
 
-            List<int> AllPersons = new List<int>();
-            Console.WriteLine("GEt all");
-            using (var connection = new SqlConnection(_connectionString))
-            {
-
-
-                connection.Open();
-                string sql = "SELECT phoneNo FROM Accounts";
-                using (var command = new SqlCommand(sql, connection))
+                try
                 {
-                    using(var reader = command.ExecuteReader())
+                    var hey = response.Models.FirstOrDefault();
+
+                    if (hey == null)
                     {
-                        while (reader.Read())
-                        {
-                            Userdto persondto = new Userdto();
-
-                            persondto.phoneNo = reader.GetInt32(0);
-
-
-                            AllPersons.Add(persondto.phoneNo);
-                        }
-
+                        return BadRequest("Phone Number Taken");
                     }
 
-
+                    // update Password
+                    try
+                    {
+                        var responseUpdate = await _supabaseClient.From<Userdto>()
+                            .Where(n => n.PhoneNo == phoneNumberClaim.ToString())
+                            .Set(u => u.PhoneNo, changePhoneNumber.NewPhoneNumber)
+                            .Update();
+                        return Ok("Succssefully Updated Phone Number!");
+                    }
+                    catch (Exception)
+                    {
+                        return BadRequest("No Connection for updating the Password process");
+                    }
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Problem when querying the database");
                 }
             }
-
-
-            return Ok(AllPersons);
+            catch (Exception)
+            {
+                return BadRequest("No Connection, Please Try again");
+            }
         }
 
-
-        // Get by id
-        [HttpGet("{id}")]
-        public IActionResult GetUserById(int id)
+        [HttpPost("DeleteAccount"), Authorize]
+        public async Task<IActionResult> DeleteAccount()
         {
-            Persondto persondto= new Persondto();
-            using (var connection = new SqlConnection(connectionString))
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
             {
-
-
-                connection.Open();
-                string sql = "SELECT * FROM users WHERE id =@id";
-
-                using (var command = new SqlCommand(sql, connection))
-                {
-                    command.Parameters.AddWithValue("@id", id);
-                    using (var reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            persondto.id=reader.GetInt32(0);
-                            persondto.name=reader.GetString(1);
-                        }
-                        else
-                        {
-                            return NotFound();
-                        }
-                    }
-
-                }
+                return BadRequest("Invalid Token");
             }
 
+            try
+            {
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
 
-            return Ok(persondto);
+                try
+                {
+                    var hey = response.Models.FirstOrDefault();
 
+                    if (hey == null)
+                    {
+                        return BadRequest("Phone Number Taken");
+                    }
+
+                    // update Password
+                    try
+                    {
+                        var responseUpdate = await _supabaseClient.From<Userdto>()
+                            .Where(n => n.PhoneNo == phoneNumberClaim.ToString())
+                            .Set(u => u.Deleted, true)
+                            .Update();
+                        return Ok("Succssefully Deleted Account!");
+                    }
+                    catch (Exception)
+                    {
+                        return BadRequest("No Connection for Deletion");
+                    }
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Problem when querying the database");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("No Connection, Please Try again");
+            }
         }
 
-
-        //Update by id
-        [HttpPut("{id}")]
-        public IActionResult Update(int id,[FromBody] Person person)
+        [HttpPost("SearchUser"), Authorize]
+        public async Task<IActionResult> SearchUser(Query query)
         {
-
-            Persondto persondto = new Persondto();
-            using (var connection = new SqlConnection(connectionString))
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
             {
-
-
-                connection.Open();
-                string sql = "SELECT name FROM users WHERE id =@id";
-
-                using (var command = new SqlCommand(sql, connection))
-                {
-                    using (var reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            persondto.name = reader.GetString(0);
-                    command.Parameters.AddWithValue("@id", id);
-                        }
-                        else
-                        {
-                            return NotFound();
-                        }
-                    }
-
-                }
-                var oldname = persondto.name;
-
-
-                string sql1 = "UPDATE users SET name = @Newname WHERE id = @id";
-
-
-                using (var command = new SqlCommand(sql1, connection))
-                {
-
-
-                    command.Parameters.AddWithValue("@Newname", person.name);
-                    command.Parameters.AddWithValue("@id", id);
-                    command.ExecuteNonQuery();
-
-                }
-                return Ok($"{oldname}->{person.name}");
-
-
+                return BadRequest("Invalid Token");
             }
-    }
 
-        //Delete by id
-
-        [HttpDelete("{id}")]
-        public IActionResult DeleteUserById(int id)
-        {
-            Persondto persondto = new Persondto();
-            using (var connection = new SqlConnection(connectionString))
+            try
             {
+                var response = await _supabaseClient
+                    .From<UserProfiledto>()
+                    .Where(n => (n.UserName.Contains(query.SerachQuery)))
+                    .Get();
 
-
-                connection.Open();
-                string sql = "DELETE FROM users WHERE id =@id";
-
-                using (var command = new SqlCommand(sql, connection))
+                try
                 {
-                    command.Parameters.AddWithValue("@id", id);
-                    int rowAffected= command.ExecuteNonQuery();
-                    if (rowAffected > 0)
+                    Array hey = response.Models.ToArray();
+
+                    if (hey == null)
                     {
-                        return Ok("Successfully Deleted");
+                        return BadRequest("No Search Results");
                     }
-                    else
-                    {
-                        return BadRequest();
-                    }
+
+                    // update Password
+                    return Ok(hey);
 
                 }
+                catch (Exception)
+                {
+                    return BadRequest("Problem when querying the database");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("No Connection, Please Try again");
             }
 
         }
-        */
 
+        
     }
 }
