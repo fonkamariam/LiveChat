@@ -341,7 +341,7 @@ namespace LiveChat.Controllers
             }
         }
 
-        [HttpPost("UpdatePasswordThroughCode")]
+        [HttpPut("UpdatePasswordThroughCode")]
         public async Task<IActionResult> UpdatePasswordThroughCode(NewPassword newPassword)
         {
 
@@ -398,7 +398,7 @@ namespace LiveChat.Controllers
         }
 
         // Change Password after logged in
-        [HttpPost("ChangePassword"), Authorize]
+        [HttpPut("ChangePassword"), Authorize]
         public async Task<IActionResult> ChangePassword(ChangePassword changePassword)
         {
             var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
@@ -456,7 +456,7 @@ namespace LiveChat.Controllers
             }
         }
 
-        [HttpPost("ChangePhoneNumber"), Authorize]
+        [HttpPut("ChangePhoneNumber"), Authorize]
         public async Task<IActionResult> ChangePassword(ChangePhoneNumber changePhoneNumber)
         {
             var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
@@ -504,7 +504,7 @@ namespace LiveChat.Controllers
             }
         }
 
-        [HttpPost("DeleteAccount"), Authorize]
+        [HttpDelete("DeleteAccount"), Authorize]
         public async Task<IActionResult> DeleteAccount()
         {
             var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
@@ -524,7 +524,7 @@ namespace LiveChat.Controllers
 
                     if (hey == null)
                     {
-                        return BadRequest("Phone Number Taken");
+                        return BadRequest("Invalid User");
                     }
 
                     // update Password
@@ -552,7 +552,7 @@ namespace LiveChat.Controllers
             }
         }
 
-        [HttpPost("SearchUser"), Authorize]
+        [HttpGet("SearchUser"), Authorize]
         public async Task<IActionResult> SearchUser(Query query)
         {
             var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
