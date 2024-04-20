@@ -552,7 +552,7 @@ namespace LiveChat.Controllers
             }
         }
 
-        [HttpPost("SearchUser"), Authorize]
+        [HttpGet("SearchUser"), Authorize]
         public async Task<IActionResult> SearchUser(Query query)
         {
             var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");

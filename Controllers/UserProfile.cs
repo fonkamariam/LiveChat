@@ -23,7 +23,7 @@ namespace LiveChat.Controllers
 
         
         
-        [HttpGet("GetUserProfile"),Authorize]
+        [HttpGet("GetOwnUserProfile"),Authorize]
         public async Task<IActionResult> GetUserProfile()
         {
             var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
@@ -53,6 +53,64 @@ namespace LiveChat.Controllers
                     {
                         var responseUpdate = await _supabaseClient.From<UserProfiledto>()
                             .Where(n => n.UserId == hey.Id)
+                            .Single();
+
+                        UserProfileCustom userProfileCustom = new UserProfileCustom
+                        {
+                            Name = responseUpdate.Name,
+                            LastName = responseUpdate.LastName,
+                            UserName = responseUpdate.UserName,
+                            Avatar = responseUpdate.Avatar,
+                            Bio = responseUpdate.Bio
+                        };
+
+                        return Ok(userProfileCustom);
+                    }
+                    catch (Exception)
+                    {
+                        return BadRequest("No Connection for Getting Userprofile");
+                    }
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Problem when querying the database");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("No Connection, Please Try again");
+            }
+        }
+        [HttpGet("GetUserProfile/{id}"), Authorize]
+        public async Task<IActionResult> GetUserProfile(long id)
+        {
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
+            {
+                return BadRequest("Invalid Token");
+            }
+
+            try
+            {
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                try
+                {
+                    var hey = response.Models.FirstOrDefault();
+
+                    if (hey == null)
+                    {
+                        return BadRequest("Invalid Token");
+                    }
+
+
+
+                    // update Password
+                    try
+                    {
+                        var responseUpdate = await _supabaseClient.From<UserProfiledto>()
+                            .Where(n => n.UserId == id)
                             .Single();
 
                         UserProfileCustom userProfileCustom = new UserProfileCustom
