@@ -267,9 +267,8 @@ namespace LiveChat.Controllers
             }
         }
 
-
         [HttpPut("EditMessage"), Authorize]
-        public async Task<IActionResult> EditMessage(long parameterId,string parameterContent)
+        public async Task<IActionResult> EditMessage(long parameterId, string parameterContent)
         {
             try
             {
@@ -281,13 +280,14 @@ namespace LiveChat.Controllers
                 {
                     return BadRequest("Problem with the parameter Id");
                 }
+
                 return Ok(hey);
             }
             catch (Exception)
             {
                 return BadRequest("Connection Problem");
             }
-            
+
         }
 
         [HttpDelete("DeleteMessage"), Authorize]
@@ -310,6 +310,7 @@ namespace LiveChat.Controllers
                 {
                     return BadRequest("Invalid Token");
                 }
+
                 // Two Decisions here, Is it the last message in the conversation (Yes:delete Conv,participant,message)
                 // (No:update the last message from conversation table and delete the message from the message table)
                 var getMessageInfo = await _supabaseClient.From<MessageDto>()
@@ -317,20 +318,22 @@ namespace LiveChat.Controllers
                     .Get();
 
                 var getRecpientId = getMessageInfo.Models.FirstOrDefault();
-                if (getRecpientId==null)
+                if (getRecpientId == null)
                 {
                     return BadRequest("Problem with the parameter Id");
                 }
+
                 var checkMessageTable = await _supabaseClient.From<MessageDto>()
                     .Where(n => ((n.SenderId == sender.Id || n.SenderId == getRecpientId.RecpientId) &&
                                  (n.RecpientId == sender.Id || n.RecpientId == getRecpientId.RecpientId) &&
                                  n.ChatType == getRecpientId.ChatType))
                     .Get();
                 var count = checkMessageTable.Models.Count();
-                if (count ==0)
+                if (count == 0)
                 {
                     return BadRequest("Danger when fetching message");
                 }
+
                 // execute first decision 
                 if (count == 1)
                 {
@@ -349,22 +352,24 @@ namespace LiveChat.Controllers
                     }
                     catch (Exception)
                     {
-                        return BadRequest("Problem deleting one of Participants, Conversation or Message from their respective table");
+                        return BadRequest(
+                            "Problem deleting one of Participants, Conversation or Message from their respective table");
                     }
-                    
-                    
+
+
                 }
+
                 // Second Decision tree
                 try
                 {
                     await _supabaseClient.From<MessageDto>()
                         .Where(n => n.Id == parameterId)
                         .Delete();
-                    var lastestLastMessage= await _supabaseClient.From<MessageDto>()
+                    var lastestLastMessage = await _supabaseClient.From<MessageDto>()
                         .Where(n => ((n.SenderId == sender.Id || n.SenderId == getRecpientId.RecpientId) &&
                                      (n.RecpientId == sender.Id || n.RecpientId == getRecpientId.RecpientId) &&
                                      n.ChatType == getRecpientId.ChatType))
-                        .Order(n=> n.TimeStamp,Constants.Ordering.Descending) 
+                        .Order(n => n.TimeStamp, Constants.Ordering.Descending)
                         .Get();
 
                     var lastMessage = lastestLastMessage.Models.First();
@@ -376,9 +381,10 @@ namespace LiveChat.Controllers
                 }
                 catch (Exception)
                 {
-                    return BadRequest("Problem either deleting Message or updating fetching latest message and updating it from the message table");
+                    return BadRequest(
+                        "Problem either deleting Message or updating fetching latest message and updating it from the message table");
                 }
-            } 
+            }
             catch (Exception)
             {
                 return BadRequest("NO Connection");
@@ -410,7 +416,7 @@ namespace LiveChat.Controllers
                     .Where(n => (n.SenderId == sender.Id) || (n.RecpientId == sender.Id))
                     .Order(n => n.TimeStamp, Constants.Ordering.Descending)
                     .Get();
-               
+
                 Array heygetEverything = getEverything.Models.ToArray();
                 return Ok(heygetEverything);
 
@@ -421,6 +427,100 @@ namespace LiveChat.Controllers
                 return BadRequest("Connection Problem");
             }
         }
+
+        [HttpGet("GetMessageId"), Authorize]
+        public async Task<IActionResult> GetMessageId(MessageUser messageUser)
+        {
+
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
+            {
+                return BadRequest("Invalid Token");
+            }
+
+            try
+            {
+
+                var GetSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+
+                try
+                {
+                    var Sender = GetSender.Models.FirstOrDefault();
+
+
+                    if (Sender == null)
+                    {
+                        return BadRequest("Invalid Token");
+                    }
+
+                    var fonkaParticipants = await _supabaseClient
+                        .From<ParticipantDto>()
+                        .Where(p => p.UserId == Sender.Id && p.ChatType == messageUser.ChatType)
+                        .Get();
+
+                    var barokParticipants = await _supabaseClient
+                        .From<ParticipantDto>()
+                        .Where(p => p.UserId == messageUser.RecpientId && p.ChatType == messageUser.ChatType)
+                        .Get();
+
+                    Dictionary<long, long> myFirstDictionary = new Dictionary<long, long>();
+                    Dictionary<long, long> mySeconDictionary = new Dictionary<long, long>();
+
+                    myFirstDictionary =
+                        fonkaParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
+                    mySeconDictionary =
+                        barokParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
+
+                    long ConvId = 0;
+                    foreach (var key in myFirstDictionary.Keys)
+                    {
+
+                        if (mySeconDictionary.ContainsKey(myFirstDictionary[key]))
+                        {
+                            ConvId = myFirstDictionary[key];
+                            break;
+                        }
+                    }
+
+                    if (ConvId == 0)
+                    {
+                        return BadRequest("Internal Server Error, ConvId not found when supposed to be found");
+                    }
+
+                    // I have the coversation Id
+                    // Get the message Id from the Database
+                    var getMessageinfo = await _supabaseClient.From<MessageDto>()
+                        .Where(n => n.SenderId == Sender.Id)
+                        .Where(n => n.RecpientId == messageUser.RecpientId)
+                        .Where(n => n.ChatType == messageUser.ChatType)
+                        .Where(n => n.ConvId == ConvId)
+                        .Where(n => n.Content == messageUser.Content)
+                        .Get();
+                    var messageId = getMessageinfo.Models.FirstOrDefault();
+                    if (messageId == null)
+                    {
+                        return BadRequest("Internal Server Error when fetching message Info, Consult Builder");
+                    }
+
+                    return Ok(messageId.Id);
+
+
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Connection Problem");
+                }
+
+            }
+            catch
+            {
+                return BadRequest("Connection Problem");
+            }
+        }
+
+
 
     }
 }
