@@ -385,7 +385,42 @@ namespace LiveChat.Controllers
             }
         }
 
+        [HttpGet("GetMessageHistory"), Authorize]
+        public async Task<IActionResult> GetMessageHistory()
+        {
+            try
+            {
+                var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+                if (phoneNumberClaim == null)
+                {
+                    return BadRequest("Invalid Token");
+                }
 
+                var getSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var sender = getSender.Models.FirstOrDefault();
+
+                if (sender == null)
+                {
+                    return BadRequest("Invalid Token");
+                }
+
+                var getEverything = await _supabaseClient.From<MessageDto>()
+                    .Where(n => (n.SenderId == sender.Id) || (n.RecpientId == sender.Id))
+                    .Order(n => n.TimeStamp, Constants.Ordering.Descending)
+                    .Get();
+               
+                Array heygetEverything = getEverything.Models.ToArray();
+                return Ok(heygetEverything);
+
+
+            }
+            catch (Exception)
+            {
+                return BadRequest("Connection Problem");
+            }
+        }
 
     }
 }
