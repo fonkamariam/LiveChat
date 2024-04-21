@@ -5,10 +5,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Supabase.Interfaces;
-using Supabase;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Identity;
 using Newtonsoft.Json;
+using Postgrest;
+using Client = Supabase.Client;
 
 namespace LiveChat.Controllers
 {
@@ -289,6 +290,102 @@ namespace LiveChat.Controllers
             
         }
 
-        
+        [HttpDelete("DeleteMessage"), Authorize]
+        public async Task<IActionResult> DeleteMessage(long parameterId)
+        {
+            try
+            {
+                var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+                if (phoneNumberClaim == null)
+                {
+                    return BadRequest("Invalid Token");
+                }
+
+                var getSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var sender = getSender.Models.FirstOrDefault();
+
+                if (sender == null)
+                {
+                    return BadRequest("Invalid Token");
+                }
+                // Two Decisions here, Is it the last message in the conversation (Yes:delete Conv,participant,message)
+                // (No:update the last message from conversation table and delete the message from the message table)
+                var getMessageInfo = await _supabaseClient.From<MessageDto>()
+                    .Where(n => n.Id == parameterId)
+                    .Get();
+
+                var getRecpientId = getMessageInfo.Models.FirstOrDefault();
+                if (getRecpientId==null)
+                {
+                    return BadRequest("Problem with the parameter Id");
+                }
+                var checkMessageTable = await _supabaseClient.From<MessageDto>()
+                    .Where(n => ((n.SenderId == sender.Id || n.SenderId == getRecpientId.RecpientId) &&
+                                 (n.RecpientId == sender.Id || n.RecpientId == getRecpientId.RecpientId) &&
+                                 n.ChatType == getRecpientId.ChatType))
+                    .Get();
+                var count = checkMessageTable.Models.Count();
+                if (count ==0)
+                {
+                    return BadRequest("Danger when fetching message");
+                }
+                // execute first decision 
+                if (count == 1)
+                {
+                    try
+                    {
+                        await _supabaseClient.From<ParticipantDto>()
+                            .Where(n => n.ConversationId == getRecpientId.ConvId)
+                            .Delete();
+                        await _supabaseClient.From<ConversatinDto>()
+                            .Where(n => n.ConvId == getRecpientId.ConvId)
+                            .Delete();
+                        await _supabaseClient.From<MessageDto>()
+                            .Where(n => n.Id == parameterId)
+                            .Delete();
+                        return Ok("Deleted");
+                    }
+                    catch (Exception)
+                    {
+                        return BadRequest("Problem deleting one of Participants, Conversation or Message from their respective table");
+                    }
+                    
+                    
+                }
+                // Second Decision tree
+                try
+                {
+                    await _supabaseClient.From<MessageDto>()
+                        .Where(n => n.Id == parameterId)
+                        .Delete();
+                    var lastestLastMessage= await _supabaseClient.From<MessageDto>()
+                        .Where(n => ((n.SenderId == sender.Id || n.SenderId == getRecpientId.RecpientId) &&
+                                     (n.RecpientId == sender.Id || n.RecpientId == getRecpientId.RecpientId) &&
+                                     n.ChatType == getRecpientId.ChatType))
+                        .Order(n=> n.TimeStamp,Constants.Ordering.Descending) 
+                        .Get();
+
+                    var lastMessage = lastestLastMessage.Models.First();
+                    await _supabaseClient.From<ConversatinDto>()
+                        .Where(n => n.ConvId == getRecpientId.ConvId)
+                        .Set(n => n.LastMessage, lastMessage.Id)
+                        .Update();
+                    return Ok("Deleted");
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Problem either deleting Message or updating fetching latest message and updating it from the message table");
+                }
+            } 
+            catch (Exception)
+            {
+                return BadRequest("NO Connection");
+            }
+        }
+
+
+
     }
 }
