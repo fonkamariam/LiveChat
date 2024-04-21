@@ -8,6 +8,8 @@ using Supabase.Interfaces;
 using Supabase;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Identity;
+using Newtonsoft.Json;
+
 namespace LiveChat.Controllers
 {
     [Route("api/[controller]")]
@@ -215,9 +217,9 @@ namespace LiveChat.Controllers
                                             };
 
                                             var addNewParticipants1 = await _supabaseClient.From<ParticipantDto>()
-                                                .Insert(newParticipant1)
+                                                .Insert(newParticipant1);
                                             var addNewParticipants2 = await _supabaseClient.From<ParticipantDto>()
-                                                .Insert(newParticipant2)
+                                                .Insert(newParticipant2);
                                             return Ok(newMessage);
                                         }
                                         catch (Exception)
@@ -263,5 +265,30 @@ namespace LiveChat.Controllers
                 return BadRequest("UserProblem");
             }
         }
+
+
+        [HttpPut("EditMessage"), Authorize]
+        public async Task<IActionResult> EditMessage(long parameterId,string parameterContent)
+        {
+            try
+            {
+                var updateMessage = await _supabaseClient.From<MessageDto>().Where(n => n.Id == parameterId)
+                    .Set(n => n.Content, parameterContent)
+                    .Update();
+                var hey = updateMessage.Models.FirstOrDefault();
+                if (hey == null)
+                {
+                    return BadRequest("Problem with the parameter Id");
+                }
+                return Ok(hey);
+            }
+            catch (Exception)
+            {
+                return BadRequest("Connection Problem");
+            }
+            
+        }
+
+        
     }
 }
