@@ -674,7 +674,7 @@ namespace LiveChat.Controllers
                 var GetSender = await _supabaseClient.From<Userdto>()
                     .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
 
-                try 
+                try
                 {
                     var Sender = GetSender.Models.FirstOrDefault();
 
@@ -683,15 +683,16 @@ namespace LiveChat.Controllers
                     {
                         return BadRequest("Invalid Token");
                     }
+
                     // get Conversation info 
                     var convMessage = await _supabaseClient.From<MessageDto>()
                         .Where(n => n.ConvId == parameterConvId)
-                        .Order(n=>n.TimeStamp,Constants.Ordering.Ascending)
+                        .Order(n => n.TimeStamp, Constants.Ordering.Ascending)
                         .Get();
                     Array allmessArray = convMessage.Models.ToArray();
                     return Ok(allmessArray);
-                } 
-                catch (Exception) 
+                }
+                catch (Exception)
                 {
                     return BadRequest("Problem in the conversation Id in the parameter");
                 }
@@ -726,19 +727,20 @@ namespace LiveChat.Controllers
                     {
                         return BadRequest("Invalid Token");
                     }
+
                     // get all Conversation info
                     var allConvId = await _supabaseClient.From<ParticipantDto>()
-                        .Where(n => n.UserId == Sender.Id && n.ChatType=="Direct")
+                        .Where(n => n.UserId == Sender.Id && n.ChatType == "Direct")
                         .Select("ConversationId")
                         .Get();
                     var allConvIdArray = allConvId.Models.ToArray();
-                    
+
                     var allConvIdOrdered = await _supabaseClient.From<ConversatinDto>()
                         .Where(n => allConvIdArray.Contains<>(n.ConvId))
-                        .Order(n=> n.UpdatedTime,Constants.Ordering.Descending)
+                        .Order(n => n.UpdatedTime, Constants.Ordering.Descending)
                         .Get();
 
-                    var final= allConvIdOrdered.Models.ToArray();
+                    var final = allConvIdOrdered.Models.ToArray();
 
                     // Check if there is a conversation between self
                     var fonkaParticipants = await _supabaseClient.From<ParticipantDto>()
@@ -753,7 +755,7 @@ namespace LiveChat.Controllers
                     var checkOwn = await _supabaseClient.From<ParticipantDto>()
                         .Where(n => convIdsWithTwoFonkaParticipants.Contains(n.ConversationId))
                         .Get();
-                   
+
                     if (checkOwn.Models.Count == 2)
                     {
                         var ConvIdOwn = checkOwn.Models.FirstOrDefault();
@@ -766,12 +768,13 @@ namespace LiveChat.Controllers
                     }
 
                     var dicUserConv = await _supabaseClient.From<ParticipantDto>()
-                        .Where(n => (final.Contains<>(n.ConversationId))&&(n.UserId!=Sender.Id))
+                        .Where(n => (final.Contains<>(n.ConversationId)) && (n.UserId != Sender.Id))
                         .Get();
-                    
-                    
-                    var dicUserConvFinal = dicUserConv.Models.OrderBy(p => Array.IndexOf(final, p.ConversationId)).ToArray();
-                    
+
+
+                    var dicUserConvFinal = dicUserConv.Models.OrderBy(p => Array.IndexOf(final, p.ConversationId))
+                        .ToArray();
+
                     return Ok(dicUserConvFinal);
                 }
                 catch (Exception)
@@ -810,6 +813,7 @@ namespace LiveChat.Controllers
                     {
                         return BadRequest("Invalid Token");
                     }
+
                     // get all Conversation info
                     var allConvId = await _supabaseClient.From<ParticipantDto>()
                         .Where(n => n.UserId == Sender.Id && n.ChatType == "Group")
@@ -824,14 +828,15 @@ namespace LiveChat.Controllers
 
                     var final = allConvIdOrdered.Models.ToArray();
 
-                    
+
 
                     var dicUserConv = await _supabaseClient.From<ParticipantDto>()
                         .Where(n => (final.Contains<>(n.ConversationId)) && (n.UserId != Sender.Id))
                         .Get();
 
 
-                    var dicUserConvFinal = dicUserConv.Models.OrderBy(p => Array.IndexOf(final, p.ConversationId)).ToArray();
+                    var dicUserConvFinal = dicUserConv.Models.OrderBy(p => Array.IndexOf(final, p.ConversationId))
+                        .ToArray();
 
 
 
@@ -849,6 +854,59 @@ namespace LiveChat.Controllers
                 return BadRequest("Connection Problem first part");
             }
         }
+
+
+        [HttpDelete("DeleteConversation"), Authorize]
+        public async Task<IActionResult> DeleteConversaion(long parameterConvId)
+        {
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
+            {
+                return BadRequest("Invalid Token");
+            }
+
+            try
+            {
+
+                var GetSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+
+                try
+                {
+                    var Sender = GetSender.Models.FirstOrDefault();
+
+
+                    if (Sender == null)
+                    {
+                        return BadRequest("Invalid Token");
+                    }
+                    // Delete all messages
+                    // Delete Participants
+                    // Delete Conversation finally
+
+                    await _supabaseClient.From<MessageDto>()
+                        .Where(n => n.ConvId == parameterConvId && n.ChatType == "Direct")
+                        .Delete();
+                    await _supabaseClient.From<ParticipantDto>()
+                        .Where(n => n.ConversationId == parameterConvId && n.ChatType == "Direct")
+                        .Delete();
+                    await _supabaseClient.From<ConversatinDto>()
+                        .Where(n => n.ConvId == parameterConvId && n.Type == "Direct")
+                        .Delete();
+                    return Ok("Succesfully Deleted");
+                }
+                catch
+                {
+                    return BadRequest("Probelm");
+                }
+            }
+            catch
+            {
+                return BadRequest("Connection Problem");
+            }
+        }
+
 
     }
 }
