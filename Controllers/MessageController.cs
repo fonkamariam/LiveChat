@@ -370,7 +370,7 @@ namespace LiveChat.Controllers
                     var getconvId = getConvid.Models.FirstOrDefault();
 
 
-                    if (parameterId == getconvId.LastMessage) 
+                    if (parameterId == getconvId.LastMessage)
                     {
                         var lastestLastMessage = await _supabaseClient.From<MessageDto>()
                             .Where(n => ((n.SenderId == sender.Id || n.SenderId == getRecpientId.RecpientId) &&
@@ -385,6 +385,7 @@ namespace LiveChat.Controllers
                             .Set(n => n.LastMessage, secondlastMessage.Id)
                             .Update();
                     }
+
                     await _supabaseClient.From<MessageDto>()
                         .Where(n => n.Id == parameterId)
                         .Delete();
@@ -427,7 +428,7 @@ namespace LiveChat.Controllers
 
                 var getEverything = await _supabaseClient.From<MessageDto>()
                     .Where(n => (n.SenderId == sender.Id) || (n.RecpientId == sender.Id))
-                    .Where(n=> n.Content.Contains(query))
+                    .Where(n => n.Content.Contains(query))
                     .Order(n => n.TimeStamp, Constants.Ordering.Descending)
                     .Get();
 
@@ -534,9 +535,9 @@ namespace LiveChat.Controllers
             }
         }
 
-        [HttpGet("GetAllDirectConversations"), Authorize]
+        [HttpGet("GetConversationId"), Authorize]
 
-        public async Task<IActionResult> GetAllDirectConversations()
+        public async Task<IActionResult> GetConversationId(long talkee, string parameterType)
         {
             var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
             if (phoneNumberClaim == null)
@@ -560,8 +561,57 @@ namespace LiveChat.Controllers
                     {
                         return BadRequest("Invalid Token");
                     }
-                    // fetch all 
+
+                    // get Conversation Id
+                    var fonkaParticipants = await _supabaseClient
+                        .From<ParticipantDto>()
+                        .Where(p => p.UserId == Sender.Id && p.ChatType == parameterType)
+                        .Get();
+
+                    var barokParticipants = await _supabaseClient
+                        .From<ParticipantDto>()
+                        .Where(p => p.UserId == talkee && p.ChatType == parameterType)
+                        .Get();
+
+                    Dictionary<long, long> myFirstDictionary = new Dictionary<long, long>();
+                    Dictionary<long, long> mySeconDictionary = new Dictionary<long, long>();
+
+                    myFirstDictionary =
+                        fonkaParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
+                    mySeconDictionary =
+                        barokParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
+
+                    long ConvId = 0;
+                    foreach (var key in myFirstDictionary.Keys)
+                    {
+
+                        if (mySeconDictionary.ContainsKey(myFirstDictionary[key]))
+                        {
+                            ConvId = myFirstDictionary[key];
+                            break;
+                        }
+                    }
+
+                    if (ConvId == 0)
+                    {
+                        return BadRequest("No Conversation with user with provided user");
+                    }
+
+                    // I have the coversation Id
+                    return Ok(ConvId);
+
                 }
+                catch (Exception)
+                {
+                    return BadRequest("Connection Problem in second part");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("Connection Problem first part");
+            }
+        }
+
 
 
     }
