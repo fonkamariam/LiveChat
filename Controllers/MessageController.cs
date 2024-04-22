@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using Microsoft.AspNetCore.Identity;
 using Newtonsoft.Json;
 using Postgrest;
-using System.Linq; // For Select method
+using System.Linq;
 
 using Client = Supabase.Client;
 using System.Linq;
@@ -731,16 +731,15 @@ namespace LiveChat.Controllers
                     // get all Conversation info
                     var allConvId = await _supabaseClient.From<ParticipantDto>()
                         .Where(n => n.UserId == Sender.Id && n.ChatType == "Direct")
-                        .Select("ConversationId")
                         .Get();
-                    var allConvIdArray = allConvId.Models.ToArray();
+                    var allConvIdArray = allConvId.Models.Select(p => p.ConversationId).ToArray();
 
                     var allConvIdOrdered = await _supabaseClient.From<ConversatinDto>()
-                        .Where(n => allConvIdArray.Contains<>(n.ConvId))
+                        .Where(n => allConvIdArray.Contains(n.ConvId)) 
                         .Order(n => n.UpdatedTime, Constants.Ordering.Descending)
                         .Get();
 
-                    var final = allConvIdOrdered.Models.ToArray();
+                    var final = allConvIdOrdered.Models.Select(a=>a.ConvId).ToArray();
 
                     // Check if there is a conversation between self
                     var fonkaParticipants = await _supabaseClient.From<ParticipantDto>()
@@ -764,11 +763,11 @@ namespace LiveChat.Controllers
                             .Get();
                         var tobeaAppended = GetownConv.Models.FirstOrDefault();
 
-                        final.Append(tobeaAppended);
+                        final.Append(tobeaAppended.ConvId);
                     }
 
                     var dicUserConv = await _supabaseClient.From<ParticipantDto>()
-                        .Where(n => (final.Contains<>(n.ConversationId)) && (n.UserId != Sender.Id))
+                        .Where(n => (final.Contains(n.ConversationId)) && (n.UserId != Sender.Id))
                         .Get();
 
 
@@ -817,21 +816,20 @@ namespace LiveChat.Controllers
                     // get all Conversation info
                     var allConvId = await _supabaseClient.From<ParticipantDto>()
                         .Where(n => n.UserId == Sender.Id && n.ChatType == "Group")
-                        .Select("ConversationId")
                         .Get();
-                    var allConvIdArray = allConvId.Models.ToArray();
+                    var allConvIdArray = allConvId.Models.Select(p=>p.ConversationId).ToArray();
 
                     var allConvIdOrdered = await _supabaseClient.From<ConversatinDto>()
-                        .Where(n => allConvIdArray.Contains<>(n.ConvId))
+                        .Where(n => allConvIdArray.Contains(n.ConvId))
                         .Order(n => n.UpdatedTime, Constants.Ordering.Descending)
                         .Get();
 
-                    var final = allConvIdOrdered.Models.ToArray();
+                    var final = allConvIdOrdered.Models.Select(c => c.ConvId).ToArray();
 
 
 
                     var dicUserConv = await _supabaseClient.From<ParticipantDto>()
-                        .Where(n => (final.Contains<>(n.ConversationId)) && (n.UserId != Sender.Id))
+                        .Where(n => (final.Contains(n.ConversationId)) && (n.UserId != Sender.Id))
                         .Get();
 
 

@@ -9,13 +9,13 @@ namespace LiveChat.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UserProfile : ControllerBase
+    public class UserProfileController : ControllerBase
     {
 
         private readonly IConfiguration _configuration;
         private readonly Client _supabaseClient;
 
-        public UserProfile(IConfiguration configuration, Client supabaseClient)
+        public UserProfileController(IConfiguration configuration, Client supabaseClient)
         {
             _configuration = configuration;
             _supabaseClient = supabaseClient;
