@@ -392,7 +392,7 @@ namespace LiveChat.Controllers
         }
 
         [HttpGet("GetMessageHistory"), Authorize]
-        public async Task<IActionResult> GetMessageHistory()
+        public async Task<IActionResult> GetMessageHistory(string query)
         {
             try
             {
@@ -414,6 +414,7 @@ namespace LiveChat.Controllers
 
                 var getEverything = await _supabaseClient.From<MessageDto>()
                     .Where(n => (n.SenderId == sender.Id) || (n.RecpientId == sender.Id))
+                    .Where(n=> n.Content.Contains(query))
                     .Order(n => n.TimeStamp, Constants.Ordering.Descending)
                     .Get();
 
@@ -520,6 +521,34 @@ namespace LiveChat.Controllers
             }
         }
 
+        [HttpGet("GetAllDirectConversations"), Authorize]
+
+        public async Task<IActionResult> GetAllDirectConversations()
+        {
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
+            {
+                return BadRequest("Invalid Token");
+            }
+
+            try
+            {
+
+                var GetSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+
+                try
+                {
+                    var Sender = GetSender.Models.FirstOrDefault();
+
+
+                    if (Sender == null)
+                    {
+                        return BadRequest("Invalid Token");
+                    }
+                    // fetch all 
+                }
 
 
     }
