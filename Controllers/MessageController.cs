@@ -613,6 +613,50 @@ namespace LiveChat.Controllers
         }
 
 
+        [HttpGet("GetConversationInfo"), Authorize]
+
+        public async Task<IActionResult> GetConversationInfo(long parameterConvId)
+        {
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
+            {
+                return BadRequest("Invalid Token");
+            }
+
+            try
+            {
+                var GetSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                try
+                {
+                    var Sender = GetSender.Models.FirstOrDefault();
+
+
+                    if (Sender == null)
+                    {
+                        return BadRequest("Invalid Token");
+                    }
+
+                    // get Conversation info
+                    var convInfo = await _supabaseClient.From<ConversatinDto>()
+                        .Where(n => n.ConvId == parameterConvId)
+                        .Get();
+                    var conversationInfo = convInfo.Models.FirstOrDefault();
+                    return Ok(conversationInfo);
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Problem in the conversation Id in the parameter");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("Connection Problem first part");
+            }
+        }
+
+
 
     }
 }
