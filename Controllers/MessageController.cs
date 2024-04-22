@@ -362,21 +362,34 @@ namespace LiveChat.Controllers
                 // Second Decision tree
                 try
                 {
+                    var getConvid = await _supabaseClient.From<ConversatinDto>()
+                        .Where(n => n.ConvId == getRecpientId.ConvId)
+                        .Get();
+                    // Is it the Last message or not?
+                    //Yes it is
+                    var getconvId = getConvid.Models.FirstOrDefault();
+
+
+                    if (parameterId == getconvId.LastMessage) 
+                    {
+                        var lastestLastMessage = await _supabaseClient.From<MessageDto>()
+                            .Where(n => ((n.SenderId == sender.Id || n.SenderId == getRecpientId.RecpientId) &&
+                                         (n.RecpientId == sender.Id || n.RecpientId == getRecpientId.RecpientId) &&
+                                         n.ChatType == getRecpientId.ChatType))
+                            .Order(n => n.TimeStamp, Constants.Ordering.Descending)
+                            .Get();
+
+                        var secondlastMessage = lastestLastMessage.Models.Skip(1).FirstOrDefault();
+                        await _supabaseClient.From<ConversatinDto>()
+                            .Where(n => n.ConvId == getRecpientId.ConvId)
+                            .Set(n => n.LastMessage, secondlastMessage.Id)
+                            .Update();
+                    }
                     await _supabaseClient.From<MessageDto>()
                         .Where(n => n.Id == parameterId)
                         .Delete();
-                    var lastestLastMessage = await _supabaseClient.From<MessageDto>()
-                        .Where(n => ((n.SenderId == sender.Id || n.SenderId == getRecpientId.RecpientId) &&
-                                     (n.RecpientId == sender.Id || n.RecpientId == getRecpientId.RecpientId) &&
-                                     n.ChatType == getRecpientId.ChatType))
-                        .Order(n => n.TimeStamp, Constants.Ordering.Descending)
-                        .Get();
 
-                    var lastMessage = lastestLastMessage.Models.First();
-                    await _supabaseClient.From<ConversatinDto>()
-                        .Where(n => n.ConvId == getRecpientId.ConvId)
-                        .Set(n => n.LastMessage, lastMessage.Id)
-                        .Update();
+
                     return Ok("Deleted");
                 }
                 catch (Exception)
@@ -387,7 +400,7 @@ namespace LiveChat.Controllers
             }
             catch (Exception)
             {
-                return BadRequest("NO Connection");
+                return BadRequest("No Connection");
             }
         }
 
