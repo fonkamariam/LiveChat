@@ -170,13 +170,13 @@ namespace LiveChat.Controllers
                 {
 
 
-                    var checkGroupid = await _supabaseClient.From<GroupDto>()
+                    var checkGroupid = await _supabaseClient.From<GroupMemberDto>()
                         .Where(n => n.GroupId == groupId)
                         .Get();
                     var vertifyingGroupid = checkGroupid.Models.First();
-                    if (vertifyingGroupid == null && vertifyingGroupid.CreatorId != sender.Id)
+                    if (vertifyingGroupid == null || vertifyingGroupid.Role != "Admin")
                     {
-                        return BadRequest("Invalid Group Id");
+                        return BadRequest("Invalid Group Id or you are not admin");
                     }
                     // Add the members
                     List<GroupMemberDto> membersToAdd = new List<GroupMemberDto>();
@@ -243,14 +243,15 @@ namespace LiveChat.Controllers
                 {
 
 
-                    var checkGroupid = await _supabaseClient.From<GroupDto>()
+                    var checkGroupid = await _supabaseClient.From<GroupMemberDto>()
                         .Where(n => n.GroupId == groupId)
                         .Get();
                     var vertifyingGroupid = checkGroupid.Models.First();
-                    if (vertifyingGroupid == null && vertifyingGroupid.CreatorId != sender.Id)
+                    if (vertifyingGroupid == null || vertifyingGroupid.Role != "Admin")
                     {
-                        return BadRequest("Invalid Group Id");
+                        return BadRequest("Invalid Group Id or You are not admin");
                     }
+
 
                     await _supabaseClient.From<GroupMemberDto>()
                         .Where(n=>n.GroupId == groupId && Members.Contains(n.UserId))
@@ -305,6 +306,7 @@ namespace LiveChat.Controllers
                     {
                         return BadRequest("Invalid Group Id");
                     }
+                    /*
                     if (vertifyingGroupid.CreatorId == sender.Id)
                     {
                         //Delete Group and Leave
@@ -314,8 +316,9 @@ namespace LiveChat.Controllers
                         await _supabaseClient.From<GroupDto>()
                             .Where(n => n.GroupId == groupId)
                             .Delete();
-                        return Ok("Since you are the creator,group deleted")
+                        return Ok("Since you are the creator,group deleted");
                     }
+                    */
                     // only Leave Group
 
 
@@ -857,6 +860,158 @@ namespace LiveChat.Controllers
 
         }
 
+        [HttpPut("UpdateGroupSettings")]
+        public async Task<IActionResult> UpdateGroupSettings( UpdateGroupSettingModel updateGroupSetting)
+        {
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
+            {
+                return BadRequest("Invalid Token");
+            }
 
+            try
+            {
+
+                var getSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var sender = getSender.Models.FirstOrDefault();
+
+
+                if (sender == null)
+                {
+                    return BadRequest("Invalid Token");
+                }
+
+                try
+                {
+                    // checking if the user is admin
+                    var checkGroupid = await _supabaseClient.From<GroupMemberDto>()
+                        .Where(n => n.GroupId == updateGroupSetting.GroupId && n.UserId == sender.Id)
+                        .Get();
+                    var vertifyingGroupid = checkGroupid.Models.First();
+                    if (vertifyingGroupid == null || vertifyingGroupid.Role != "Admin")
+                    {
+                        return BadRequest("Invalid Group Id or You are not Admin");
+                    }
+                    // let's update the setting
+                    if (updateGroupSetting.Name!="")
+                    {
+                        var updateName = await _supabaseClient.From<GroupDto>()
+                            .Where(n => n.GroupId == updateGroupSetting.GroupId)
+                            .Set(n => n.Name, updateGroupSetting.Name)
+                            .Get();
+
+                        var updatedName = updateName.Models.First();
+                        if (updatedName == null)
+                        {
+                            return BadRequest("Problem updating Name(Invalid Group Id)");
+                        }
+
+                    }
+
+                    if (updateGroupSetting.Description!= "")
+                    {
+                        var updateDesc = await _supabaseClient.From<GroupDto>()
+                            .Where(n => n.GroupId == updateGroupSetting.GroupId)
+                            .Set(n => n.Description, updateGroupSetting.Description)
+                            .Get();
+
+                        var updatedDesc = updateDesc.Models.First();
+                        if (updatedDesc == null)
+                        {
+                            return BadRequest("Problem updating Description (Invalid Group Id)");
+                        }
+
+                    }
+                    return Ok("Successfully updated");
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Connection Problem when editing message");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("Problem validation user");
+            }
+
+        }
+
+        [HttpDelete("DeleteGroup")]
+        public async Task<IActionResult> DeleteGroup(long groupID)
+        {
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
+            {
+                return BadRequest("Invalid Token");
+            }
+
+            try
+            {
+
+                var getSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var sender = getSender.Models.FirstOrDefault();
+
+
+                if (sender == null)
+                {
+                    return BadRequest("Invalid Token");
+                }
+
+                try
+                {
+                    // checking if the user is admin
+                    var checkGroupid = await _supabaseClient.From<GroupMemberDto>()
+                        .Where(n => n.GroupId == groupID && n.UserId == sender.Id)
+                        .Get();
+                    var vertifyingGroupid = checkGroupid.Models.First();
+                    if (vertifyingGroupid == null || vertifyingGroupid.Role != "Admin")
+                    {
+                        return BadRequest("Invalid Group Id or You are not Admin");
+                    }
+                    // getting the GroupConversation Id
+                    var getGroupConv = await _supabaseClient.From<GroupDto>()
+                        .Where(n => n.GroupId == groupID)
+                        .Get();
+                    var groupInfo = getGroupConv.Models.First();
+                    if (groupInfo.GroupId != groupID)
+                    {
+                        return BadRequest("Invalid groupId given");
+                    }
+                    // i have GroupId and its conversation ID
+
+                    // First let's delete the conversation row
+                    await _supabaseClient.From<GroupConversationDto>()
+                        .Where(n => n.Id == groupInfo.G_CoversationId)
+                        .Delete();
+                    // then Let's delete every message related to the group from the GroupMessage table
+                    await _supabaseClient.From<GroupMessageDto>()
+                        .Where(n => n.RecGroupId == groupInfo.GroupId)
+                        .Delete();
+                    // then remove all members from the Members table
+                    await _supabaseClient.From<GroupMemberDto>()
+                        .Where(n => n.GroupId == groupInfo.GroupId)
+                        .Delete();
+
+                    // finally Delete the group from the Group table
+                    await _supabaseClient.From<GroupDto>()
+                        .Where(n => n.GroupId == groupInfo.GroupId)
+                        .Delete();
+
+                    return Ok("Successfully Deleted everything about Group");
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Connection Problem when editing message");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("Problem validation user");
+            }
+        }
     }
 }
