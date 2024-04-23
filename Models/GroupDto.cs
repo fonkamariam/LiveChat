@@ -17,6 +17,7 @@ using Postgrest.Models;
         [Column("Description")] public string Description { get; set; } = "";
 
         [ForeignKey("CreatorId")] public long CreatorId { get; set; }
+        [ForeignKey("G_CoversationId")] public long G_CoversationId { get; set; }
 
 }
 

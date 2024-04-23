@@ -163,10 +163,9 @@ namespace LiveChat.Controllers
                             Status = "Sent",
                             SenderId = Sender.Id,
                             RecpientId = messageUser.RecpientId,
-                            Content = messageUser.Content,
-                            ConvId = 0
+                            Content = messageUser.Content
                         };
-                        // Create a new Message Table with a convId of 0 temporarily
+                        // Create a new Message Table with a convId of NULL temporarily
                         var insertMessage = await _supabaseClient.From<MessageDto>().Insert(newMessage);
                         try
                         {
@@ -199,7 +198,7 @@ namespace LiveChat.Controllers
                                             return BadRequest("Problem at getting a message Id");
                                         }
 
-                                        // update the 0 convId back
+                                        // update the NULL convId back
                                         try
                                         {
 
@@ -292,15 +291,6 @@ namespace LiveChat.Controllers
                 {
                     return BadRequest("Invalid Token");
                 }
-            }
-            catch(Exception)
-            {
-                return BadRequest("Problem validation user");
-            }
-
-
-            try
-            {
                 var updateMessage = await _supabaseClient.From<MessageDto>()
                     .Where(n => n.Id == parameterId && n.SenderId == Sender.Id)
                     .Set(n => n.Content, parameterContent)
