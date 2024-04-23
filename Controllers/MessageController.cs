@@ -273,9 +273,36 @@ namespace LiveChat.Controllers
         [HttpPut("EditMessage"), Authorize]
         public async Task<IActionResult> EditMessage(long parameterId, string parameterContent)
         {
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
+            {
+                return BadRequest("Invalid Token");
+            }
+
             try
             {
-                var updateMessage = await _supabaseClient.From<MessageDto>().Where(n => n.Id == parameterId)
+
+                var GetSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var Sender = GetSender.Models.FirstOrDefault();
+
+
+                if (Sender == null)
+                {
+                    return BadRequest("Invalid Token");
+                }
+            }
+            catch(Exception)
+            {
+                return BadRequest("Problem validation user");
+            }
+
+
+            try
+            {
+                var updateMessage = await _supabaseClient.From<MessageDto>()
+                    .Where(n => n.Id == parameterId && n.SenderId == Sender.Id)
                     .Set(n => n.Content, parameterContent)
                     .Update();
                 var hey = updateMessage.Models.FirstOrDefault();
