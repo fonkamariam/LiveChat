@@ -32,7 +32,7 @@ namespace LiveChat.Controllers
         }
 
         [HttpPost("CreateGroup")]
-        async public Task<IActionResult> CreateGroup(GroupUser groupUser)
+        public async Task<IActionResult> CreateGroup(GroupUser groupUser)
         {
             var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
             if (phoneNumberClaim == null)
@@ -114,6 +114,21 @@ namespace LiveChat.Controllers
                     {
                         return BadRequest("Probelm when setting back what i borrowed in the GroupMessage");
                     }
+
+                    GroupMemberDto groupMember = new GroupMemberDto
+                    {
+                        JoinedTime = DateTime.UtcNow,
+                        GroupId = newGroupModel.GroupId,
+                        UserId = sender.Id,
+                        Role = "Admin"
+                    };
+                    var addMemberAdmin = await _supabaseClient.From<GroupMemberDto>().Insert(groupMember);
+                    var addedMemberAdmin = addMemberAdmin.Models.First();
+                    if (addedMemberAdmin == null)
+                    {
+                        return BadRequest("Probelm when adding the user to the groupmember table as admin");
+                    }
+
                     return Ok(newGroupModel);
                 }
                 catch (Exception)
@@ -129,7 +144,7 @@ namespace LiveChat.Controllers
         }
 
         [HttpPost("AddMember")]
-        async public Task<IActionResult> AddMemberTGroup(long groupId , List<long> Members)
+        public async Task<IActionResult> AddMemberTGroup(long groupId , List<long> Members)
         {
             var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
             if (phoneNumberClaim == null)
@@ -174,7 +189,7 @@ namespace LiveChat.Controllers
                             JoinedTime = DateTime.UtcNow,
                             GroupId = groupId,
                             UserId = member,
-                            Role = "member"
+                            Role = "Member"
                         });
 
                     }
@@ -184,7 +199,7 @@ namespace LiveChat.Controllers
                     var newGroupModel = addMembers.Models.FirstOrDefault();
                     if (newGroupModel == null)
                     {
-                        return BadRequest("Problem Creating a new Group");
+                        return BadRequest("Problem adding a new member");
                     }
 
                     return Ok("Succesfully Added");
@@ -202,7 +217,7 @@ namespace LiveChat.Controllers
         }
 
         [HttpPost("RemoveMember")]
-        async public Task<IActionResult> RemoveMemberGroup(long groupId, List<long> Members)
+        public async Task<IActionResult> RemoveMemberGroup(long groupId, List<long> Members)
         {
             var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
             if (phoneNumberClaim == null)
@@ -257,7 +272,7 @@ namespace LiveChat.Controllers
         }
 
         [HttpPost("LeaveGroup")]
-        async public Task<IActionResult> LeaveGroup(long groupId)
+        public async Task<IActionResult> LeaveGroup(long groupId)
         {
             var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
             if (phoneNumberClaim == null)
@@ -323,7 +338,7 @@ namespace LiveChat.Controllers
         }
 
         [HttpPost("SendGroupMessage")]
-        async public Task<IActionResult> SendGroupMessage(GroupMessagePostModel groupMessagePostModel)
+        public async Task<IActionResult> SendGroupMessage(GroupMessagePostModel groupMessagePostModel)
         {
             var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
             if (phoneNumberClaim == null)
@@ -374,7 +389,7 @@ namespace LiveChat.Controllers
                         RecGroupId = groupMessagePostModel.GroupID
                     };
                     // Message Sent... now updating the conversation table
-                    var messageToBeSent = await _supabaseClient.From<GroupMessageDto>().Insert(groupMessageDto)
+                    var messageToBeSent = await _supabaseClient.From<GroupMessageDto>().Insert(groupMessageDto);
                     var messageSent = messageToBeSent.Models.First();
                     if (messageSent == null)
                     {
@@ -405,6 +420,443 @@ namespace LiveChat.Controllers
                 return BadRequest("Problem validation user");
             }
         }
+
+        [HttpGet("GetGroupMessages")]
+        public async Task<IActionResult> GetGroupMessages(long groupID)
+        {
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
+            {
+                return BadRequest("Invalid Token");
+            }
+
+            try
+            {
+
+                var getSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var sender = getSender.Models.FirstOrDefault();
+
+
+                if (sender == null)
+                {
+                    return BadRequest("Invalid Token");
+                }
+
+                try
+                {
+                    var checkGroupid = await _supabaseClient.From<GroupDto>()
+                        .Where(n => n.GroupId == groupID)
+                        .Get();
+                    var vertifyingGroupid = checkGroupid.Models.First();
+                    if (vertifyingGroupid == null)
+                    {
+                        return BadRequest("Invalid Group Id");
+                    }
+                    // I have the conversation Id
+                    var checkSenderid = await _supabaseClient.From<GroupMemberDto>()
+                        .Where(n => n.UserId == sender.Id && n.GroupId == groupID)
+                        .Get();
+
+                    var vertifySenderAMember = checkSenderid.Models.First();
+                    if (vertifySenderAMember == null)
+                    {
+                        return BadRequest("You are not a member in the Group");
+                    }
+
+                    var getEverything = await _supabaseClient.From<GroupMessageDto>()
+                        .Where(n => n.MemberSenderId == sender.Id && n.RecGroupId == groupID)
+                        .Get();
+                    var messageArray = getEverything.Models.ToArray();
+                    return Ok(messageArray);
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Connection Problem when Deleting Members");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("Problem validation user");
+            }
+        }
+        [HttpPut("EditGroupMessage")]
+        public async Task<IActionResult> EditGroupMessage(long groupId, long messageId, string newContent)
+        {
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
+            {
+                return BadRequest("Invalid Token");
+            }
+
+            try
+            {
+
+                var getSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var sender = getSender.Models.FirstOrDefault();
+
+
+                if (sender == null)
+                {
+                    return BadRequest("Invalid Token");
+                }
+
+                try
+                {
+                    var checkGroupid = await _supabaseClient.From<GroupDto>()
+                        .Where(n => n.GroupId == groupId)
+                        .Get();
+                    var vertifyingGroupid = checkGroupid.Models.First();
+                    if (vertifyingGroupid == null)
+                    {
+                        return BadRequest("Invalid Group Id");
+                    }
+                    // I have the conversation Id
+                    
+                    var checkSenderid = await _supabaseClient.From<GroupMemberDto>()
+                        .Where(n => n.UserId == sender.Id && n.GroupId == groupId)
+                        .Get();
+
+                    var vertifySenderAMember = checkSenderid.Models.First();
+                    if (vertifySenderAMember == null)
+                    {
+                        return BadRequest("You are not a member in the Group");
+                    }
+
+                    var checkMessageId = await _supabaseClient.From<GroupMessageDto>()
+                        .Where(n => n.MemberSenderId == sender.Id && n.Id == messageId)
+                        .Get();
+                    var checkingMessageId = checkMessageId.Models.First();
+                    if (checkingMessageId==null)
+                    {
+                        return BadRequest("Invalid Message Id provided");
+                    }
+
+                    var updateMessageId = await _supabaseClient.From<GroupMessageDto>()
+                        .Where(n => n.Id == messageId)
+                        .Set(n => n.Content, newContent)
+                        .Update();
+
+                    var updatedMessage = updateMessageId.Models.FirstOrDefault();
+                    if (updatedMessage == null)
+                    {
+                        return BadRequest("Problem when updating the message");
+                    }
+
+                    var checkConv = await _supabaseClient.From<GroupConversationDto>()
+                        .Where(n => n.Id == vertifyingGroupid.G_CoversationId)
+                        .Get();
+                    var checkingConv = checkConv.Models.First();
+
+                    if (checkingConv.LastGroupMessage == messageId)
+                    {
+                        var updatingConv = await _supabaseClient.From<GroupConversationDto>()
+                            .Where(n => n.Id == vertifyingGroupid.G_CoversationId)
+                            .Set(n => n.LastGroupMessage, updatedMessage.Id)
+                            .Update();
+                    }
+                    return Ok(updatedMessage);
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Connection Problem when editing message");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("Problem validation user");
+            }
+
+        }
+
+        [HttpDelete("DeleteGroupMessage")]
+        public async Task<IActionResult> DeleteGroupMessage(long groupId, long messageId)
+        {
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
+            {
+                return BadRequest("Invalid Token");
+            }
+
+            try
+
+            {
+
+                var getSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var sender = getSender.Models.FirstOrDefault();
+
+
+                if (sender == null)
+                {
+                    return BadRequest("Invalid Token");
+                }
+
+                try
+                {
+                    var checkGroupid = await _supabaseClient.From<GroupDto>()
+                        .Where(n => n.GroupId == groupId)
+                        .Get();
+                    var vertifyingGroupid = checkGroupid.Models.First();
+                    if (vertifyingGroupid == null)
+                    {
+                        return BadRequest("Invalid Group Id");
+                    }
+                    // I have the conversation Id
+
+                    var checkSenderid = await _supabaseClient.From<GroupMemberDto>()
+                        .Where(n => n.UserId == sender.Id && n.GroupId == groupId)
+                        .Get();
+
+                    var vertifySenderAMember = checkSenderid.Models.First();
+                    if (vertifySenderAMember == null)
+                    {
+                        return BadRequest("You are not a member in the Group");
+                    }
+
+                    var checkMessageId = await _supabaseClient.From<GroupMessageDto>()
+                        .Where(n => n.MemberSenderId == sender.Id && n.Id == messageId)
+                        .Get();
+                    var checkingMessageId = checkMessageId.Models.First();
+                    if (checkingMessageId == null)
+                    {
+                        return BadRequest("Invalid Message Id provided");
+                    }
+                    // here my work begins
+                    var checkConv = await _supabaseClient.From<GroupConversationDto>()
+                        .Where(n => n.Id == vertifyingGroupid.G_CoversationId)
+                        .Get();
+                    var checkingConv = checkConv.Models.First();
+
+                    if (checkingConv.LastGroupMessage == messageId)
+                    {
+                        //fetch the next last message
+                        var fetchNextMessage = await _supabaseClient.From<GroupMessageDto>()
+                            .Where(n => n.MemberSenderId == sender.Id && n.RecGroupId== groupId)
+                            .Order(n=>n.Created_at,Constants.Ordering.Descending)
+                            .Range(1,1)
+                            .Get();
+                        var fetchedMessage = fetchNextMessage.Models.FirstOrDefault();
+                        
+                        
+                        if (fetchedMessage == null)
+                        {
+                            // the deleted message is the last message of the conversation
+                            var updatingConv = await _supabaseClient.From<GroupConversationDto>()
+                                .Where(n => n.Id == vertifyingGroupid.G_CoversationId)
+                                .Set(n => n.LastGroupMessage, null)
+                                .Set(n=>n.Updated_time,DateTime.UtcNow)
+                                .Update();
+                        }
+                        else
+                        {
+                            var updatingConv = await _supabaseClient.From<GroupConversationDto>()
+                                .Where(n => n.Id == vertifyingGroupid.G_CoversationId)
+                                .Set(n => n.LastGroupMessage, fetchedMessage.Id)
+                                .Set(n => n.Updated_time, DateTime.UtcNow)
+                                .Update();
+                        }
+
+
+
+                    }
+
+                    await _supabaseClient.From<GroupMessageDto>()
+                        .Where(n => n.Id == messageId)
+                        .Delete();
+                    
+                    return Ok("Successfully Deleted");
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Connection Problem when Deleting message");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("Problem validation user");
+            }
+
+        }
+
+        [HttpGet("GetGroupMembers")]
+        public async Task<IActionResult> GetGroupMembers(long groupID)
+        {
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
+            {
+                return BadRequest("Invalid Token");
+            }
+
+            try
+            {
+
+                var getSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var sender = getSender.Models.FirstOrDefault();
+
+
+                if (sender == null)
+                {
+                    return BadRequest("Invalid Token");
+                }
+
+                try
+                {
+                    var checkGroupid = await _supabaseClient.From<GroupDto>()
+                        .Where(n => n.GroupId == groupID)
+                        .Get();
+                    var vertifyingGroupid = checkGroupid.Models.First();
+                    if (vertifyingGroupid == null)
+                    {
+                        return BadRequest("Invalid Group Id");
+                    }
+                    // I have the conversation Id
+                    var checkSenderid = await _supabaseClient.From<GroupMemberDto>()
+                        .Where(n => n.UserId == sender.Id && n.GroupId == groupID)
+                        .Get();
+
+                    var vertifySenderAMember = checkSenderid.Models.First();
+                    if (vertifySenderAMember == null)
+                    {
+                        return BadRequest("You are not a member in the Group");
+                    }
+
+                    var getMembers = await _supabaseClient.From<GroupMemberDto>()
+                        .Where(n => n.GroupId == groupID)
+                        .Get();
+                    var membersArray = getMembers.Models.ToArray();
+                    return Ok(membersArray);
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Connection Problem when fetching Members");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("Problem validation user");
+            }
+        }
+
+        [HttpGet("GetGroupInfo")]
+        public async Task<IActionResult> GetGroupInfo(long groupID)
+        {
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
+            {
+                return BadRequest("Invalid Token");
+            }
+
+            try
+            {
+
+                var getSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var sender = getSender.Models.FirstOrDefault();
+
+
+                if (sender == null)
+                {
+                    return BadRequest("Invalid Token");
+                }
+
+                try
+                {
+                    var checkGroupid = await _supabaseClient.From<GroupDto>()
+                        .Where(n => n.GroupId == groupID)
+                        .Get();
+                    var vertifyingGroupid = checkGroupid.Models.First();
+                    if (vertifyingGroupid == null)
+                    {
+                        return BadRequest("Invalid Group Id");
+                    }
+                    // I have the conversation Id
+
+                    var getGroupInfo = await _supabaseClient.From<GroupDto>()
+                        .Where(n => n.GroupId == groupID)
+                        .Get();
+                    var groupInfo = getGroupInfo.Models.First();
+
+                    return Ok(groupInfo);
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Connection Problem when fetching Members");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("Problem validation user");
+            }
+        }
+
+        [HttpPost("SetGroupAdmin")]
+        public async Task<IActionResult> SetGroupAdmin(long groupId, List<long> Admins)
+        {
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (phoneNumberClaim == null)
+            {
+                return BadRequest("Invalid Token");
+            }
+
+            try
+            {
+
+                var getSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var sender = getSender.Models.FirstOrDefault();
+
+
+                if (sender == null)
+                {
+                    return BadRequest("Invalid Token");
+                }
+
+                try
+                {
+
+
+                    var checkGroupid = await _supabaseClient.From<GroupDto>()
+                        .Where(n => n.GroupId == groupId)
+                        .Get();
+                    var vertifyingGroupid = checkGroupid.Models.First();
+                    if (vertifyingGroupid == null && vertifyingGroupid.CreatorId != sender.Id)
+                    {
+                        return BadRequest("Invalid Group Id");
+                    }
+
+                    var addAdminMembers = await _supabaseClient.From<GroupMemberDto>()
+                        .Where(n => Admins.Contains(n.UserId))
+                        .Set(n => n.Role, "Admin")
+                        .Update();
+                    var addedAdminNumbers = addAdminMembers.Models.Count;
+                    if (addedAdminNumbers ==0)
+                    {
+                        return BadRequest("Problem Updating a new admin Member");
+                    }
+
+                    return Ok("Successfully updated their roles to admin");
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Connection Problem");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("Problem validation user");
+            }
+
+        }
+
 
     }
 }
