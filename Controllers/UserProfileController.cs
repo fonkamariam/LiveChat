@@ -26,8 +26,8 @@ namespace LiveChat.Controllers
         [HttpGet("GetOwnUserProfile"),Authorize]
         public async Task<IActionResult> GetUserProfile()
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -35,7 +35,8 @@ namespace LiveChat.Controllers
             try
             {
                 var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false)
+                    .Get();
 
                 try
                 {
@@ -46,13 +47,10 @@ namespace LiveChat.Controllers
                         return BadRequest("Invalid Token");
                     }
 
-                   
-
-                    // update Password
-                    try
+                    try 
                     {
                         var responseUpdate = await _supabaseClient.From<UserProfiledto>()
-                            .Where(n => n.UserId == hey.Id)
+                            .Where(n => n.UserId == hey.Id && n.Deleted == false)
                             .Single();
 
                         UserProfileCustom userProfileCustom = new UserProfileCustom
@@ -84,8 +82,8 @@ namespace LiveChat.Controllers
         [HttpGet("GetUserProfile/{id}"), Authorize]
         public async Task<IActionResult> GetUserProfile(long id)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -93,7 +91,8 @@ namespace LiveChat.Controllers
             try
             {
                 var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString()&& n.Deleted ==false)
+                    .Get();
 
                 try
                 {
@@ -104,8 +103,6 @@ namespace LiveChat.Controllers
                         return BadRequest("Invalid Token");
                     }
 
-
-
                     // update Password
                     try
                     {
@@ -113,6 +110,10 @@ namespace LiveChat.Controllers
                             .Where(n => n.UserId == id)
                             .Single();
 
+                        if (responseUpdate.Deleted == true)
+                        {
+                            return BadRequest("User Not Found");
+                        }
                         UserProfileCustom userProfileCustom = new UserProfileCustom
                         {
                             Name = responseUpdate.Name,
@@ -143,8 +144,8 @@ namespace LiveChat.Controllers
         [HttpPut("UpdatUserProfile"),Authorize]
         public async Task<IActionResult> UpdateUserProfile(UserProfileCustom userProfileCustom)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -152,7 +153,7 @@ namespace LiveChat.Controllers
             try
             {
                 var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString()&& n.Deleted==false).Get();
 
                 try
                 {
@@ -165,7 +166,7 @@ namespace LiveChat.Controllers
 
                     var response1 = await _supabaseClient
                         .From<UserProfiledto>()
-                        .Where(n => n.UserId == hey.Id)
+                        .Where(n => n.UserId == hey.Id && n.Deleted==false)
                         .Single();
 
                     // Check if the user profile exists
@@ -202,7 +203,7 @@ namespace LiveChat.Controllers
 
                         var response2 = await _supabaseClient
                             .From<UserProfiledto>()
-                            .Where(n => n.UserId == hey.Id)
+                            .Where(n => n.UserId == hey.Id && n.Deleted==false)
                             .Update(userProfiledto);
                         
 

@@ -23,5 +23,7 @@ public class UserProfiledto:BaseModel
 
     [Column("LastName")] public string? LastName { get; set; }
 
-}
+    [Column("Deleted")] public bool Deleted { get; set; } = false;
+
+    }
 

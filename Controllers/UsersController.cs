@@ -84,7 +84,7 @@ namespace LiveChat.Controllers
             }
         }
 
-        private string CreateToken(string phoneNumber)
+        private string CreateToken(string emailPara)
         {
             var secretsConfig = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory()) // Set the base path where secrets.json is located
@@ -92,7 +92,7 @@ namespace LiveChat.Controllers
                 .Build();
             var claims = new[]
             {
-                new Claim("PhoneNumber", phoneNumber)
+                new Claim("Email", emailPara)
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretsConfig["AppSettings:Token"]));
@@ -148,7 +148,7 @@ namespace LiveChat.Controllers
                         return Unauthorized("your Refresh token has expired, sign in again");
                     }
 
-                    string newToken = CreateToken(hey.PhoneNo);
+                    string newToken = CreateToken(hey.Email);
 
                     return Ok(newToken);
 
@@ -173,7 +173,7 @@ namespace LiveChat.Controllers
             try
             {
                 var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == person.PhoneNo && n.Deleted == false).Get();
+                    .Where(n => n.Email == person.Email && n.Deleted == false).Get();
 
                 try
                 {
@@ -189,13 +189,13 @@ namespace LiveChat.Controllers
                         return BadRequest("Wrong Password");
                     }
 
-                    string token = CreateToken(hey.PhoneNo);
+                    string token = CreateToken(hey.Email);
                     var refreshToken = GenerateRefreshToken();
                     try
                     {
 
                         var responseUpdate = await _supabaseClient.From<Userdto>()
-                            .Where(n => n.PhoneNo == person.PhoneNo)
+                            .Where(n => n.Email == person.Email)
                             .Set(u => u.Refresh_Token, refreshToken.Token)
                             .Set(u => u.Token_Created, refreshToken.Created)
                             .Set(u => u.Token_Expiry, refreshToken.Expires)
@@ -236,13 +236,12 @@ namespace LiveChat.Controllers
             var refreshToken = GenerateRefreshToken();
             var userdto = new Userdto
             {
-                PhoneNo = person.PhoneNo,
+                Email = person.PhoneNo,
                 PasswordHash = passwordHash,
                 PasswordSalt = passwordSalt,
                 Refresh_Token = refreshToken.Token,
                 Token_Expiry = refreshToken.Expires,
-                Token_Created = refreshToken.Created,
-                Email = person.Email
+                Token_Created = refreshToken.Created
 
             };
 
@@ -253,7 +252,7 @@ namespace LiveChat.Controllers
                 {
                     var hey = response.Models.First();
 
-                    string token = CreateToken(hey.PhoneNo);
+                    string token = CreateToken(hey.Email);
                     var result = new
                     {
                         Id = hey.Id,
@@ -401,8 +400,8 @@ namespace LiveChat.Controllers
         [HttpPost("ChangePassword"), Authorize]
         public async Task<IActionResult> ChangePassword(ChangePassword changePassword)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var EmailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (EmailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -410,7 +409,8 @@ namespace LiveChat.Controllers
             try
             {
                 var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == EmailClaim.ToString() && n.Deleted==false)
+                    .Get();
 
                 try
                 {
@@ -424,7 +424,7 @@ namespace LiveChat.Controllers
                     // update Password
                     try
                     {
-                        if (phoneNumberClaim.ToString() != changePassword.OldPassword)
+                        if (EmailClaim.ToString() != changePassword.OldPassword)
                         {
                             return BadRequest("Old password Invalid");
                         }
@@ -434,7 +434,7 @@ namespace LiveChat.Controllers
 
 
                         var responseUpdate = await _supabaseClient.From<Userdto>()
-                            .Where(n => n.PhoneNo == phoneNumberClaim.ToString())
+                            .Where(n => n.Email == EmailClaim.ToString())
                             .Set(u => u.PasswordHash, passwordHash)
                             .Set(u => u.PasswordSalt, passwordSalt)
                             .Update();
@@ -456,11 +456,11 @@ namespace LiveChat.Controllers
             }
         }
 
-        [HttpPost("ChangePhoneNumber"), Authorize]
-        public async Task<IActionResult> ChangePassword(ChangePhoneNumber changePhoneNumber)
+        [HttpPost("ChangeEmail"), Authorize]
+        public async Task<IActionResult> ChangePassword(ChangeEmail changeEmail)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var EmailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (EmailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -468,7 +468,8 @@ namespace LiveChat.Controllers
             try
             {
                 var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == EmailClaim.ToString() && n.Deleted == false)
+                    .Get();
 
                 try
                 {
@@ -483,8 +484,8 @@ namespace LiveChat.Controllers
                     try
                     {
                         var responseUpdate = await _supabaseClient.From<Userdto>()
-                            .Where(n => n.PhoneNo == phoneNumberClaim.ToString())
-                            .Set(u => u.PhoneNo, changePhoneNumber.NewPhoneNumber)
+                            .Where(n => n.Email == EmailClaim.ToString())
+                            .Set(u => u.Email, changeEmail.NewEmail)
                             .Update();
                         return Ok("Succssefully Updated Phone Number!");
                     }
@@ -507,8 +508,8 @@ namespace LiveChat.Controllers
         [HttpPost("DeleteAccount"), Authorize]
         public async Task<IActionResult> DeleteAccount()
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var EmailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (EmailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -516,7 +517,8 @@ namespace LiveChat.Controllers
             try
             {
                 var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == EmailClaim.ToString() && n.Deleted == false)
+                    .Get();
 
                 try
                 {
@@ -524,16 +526,32 @@ namespace LiveChat.Controllers
 
                     if (hey == null)
                     {
-                        return BadRequest("Phone Number Taken");
+                        return BadRequest("Invalid User");
                     }
 
                     // update Password
                     try
                     {
                         var responseUpdate = await _supabaseClient.From<Userdto>()
-                            .Where(n => n.PhoneNo == phoneNumberClaim.ToString())
+                            .Where(n => n.Email == EmailClaim.ToString())
                             .Set(u => u.Deleted, true)
                             .Update();
+                        var deletedUser = responseUpdate.Models.First();
+
+                        if (deletedUser == null)
+                        {
+                            return BadRequest("Problem when deleting the user");
+                        }
+                        
+                        // Trigger
+                        //UserProfile Table 
+                        var userProfileTable = await _supabaseClient.From<UserProfiledto>()
+                            .Where(n => n.Id == deletedUser.Id)
+                            .Set(n=>n.Deleted,true)
+                            .Update();
+
+
+
                         return Ok("Succssefully Deleted Account!");
                     }
                     catch (Exception)
@@ -555,8 +573,8 @@ namespace LiveChat.Controllers
         [HttpGet("SearchUser"), Authorize]
         public async Task<IActionResult> SearchUser(Query query)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var EmailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (EmailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -565,7 +583,7 @@ namespace LiveChat.Controllers
             {
                 var response = await _supabaseClient
                     .From<UserProfiledto>()
-                    .Where(n => (n.UserName.Contains(query.SerachQuery)))
+                    .Where(n => (n.UserName.Contains(query.SerachQuery))&& n.Deleted==false)
                     .Get();
 
                 try

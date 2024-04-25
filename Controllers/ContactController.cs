@@ -20,11 +20,11 @@ namespace LiveChat.Controllers
             _supabaseClient = supabaseClient;
         }
 
-        [HttpPost("AddContact_PhoneNumber"), Authorize]
-        public async Task<IActionResult> AddContact_PhoneNumber(string phoneNumber)
+        [HttpPost("AddContact_Email"), Authorize]
+        public async Task<IActionResult> AddContact_Email(string emailPara)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -32,10 +32,10 @@ namespace LiveChat.Controllers
             try
             {
                 var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString()&&n.Deleted==false).Get();
 
                 var Contactee = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumber && n.Deleted == false).Get();
+                    .Where(n => n.Email == emailPara && n.Deleted == false).Get();
 
                 try
                 {
@@ -50,7 +50,7 @@ namespace LiveChat.Controllers
 
                     if (hey2 == null)
                     {
-                        return BadRequest("Invalid Phone Number");
+                        return NotFound("Not Found by such email");
                     }
 
                     var response1 = await _supabaseClient
@@ -113,8 +113,8 @@ namespace LiveChat.Controllers
         [HttpPost("AddContact_Username"), Authorize]
         public async Task<IActionResult> AddContact_Username(string UserName)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -122,10 +122,10 @@ namespace LiveChat.Controllers
             try
             {
                 var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString()&& n.Deleted==false).Get();
 
                 var Contactee = await _supabaseClient.From<UserProfiledto>()
-                    .Where(n => n.UserName == UserName).Get();
+                    .Where(n => n.UserName == UserName && n.Deleted==false).Get();
                 
                 try
                 {
@@ -140,7 +140,7 @@ namespace LiveChat.Controllers
 
                     if (hey2 == null)
                     {
-                        return BadRequest("Invalid User Name");
+                        return BadRequest("Invalid User Name"); 
                     }
 
                     var response1 = await _supabaseClient
@@ -199,11 +199,11 @@ namespace LiveChat.Controllers
             }
         }
 
-        [HttpDelete("RemoveContact_PhoneNumber"), Authorize]
-        public async Task<IActionResult> RemoveContact_PhoneNumber(string phoneNumber)
+        [HttpDelete("RemoveContact_Email"), Authorize] 
+        public async Task<IActionResult> RemoveContact_Email(string emailPara)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -211,10 +211,10 @@ namespace LiveChat.Controllers
             try
             {
                 var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString()&& n.Deleted==false).Get();
 
                 var Contactee = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumber).Get();
+                    .Where(n => n.Email == emailPara && n.Deleted==false).Get();
 
                 try
                 {
@@ -229,7 +229,7 @@ namespace LiveChat.Controllers
 
                     if (hey2 == null)
                     {
-                        return BadRequest("Invalid Phone Number");
+                        return NotFound("No user by such email");
                     }
 
                     await _supabaseClient
@@ -255,8 +255,8 @@ namespace LiveChat.Controllers
         [HttpDelete("RemoveContact_Username"), Authorize]
         public async Task<IActionResult> RemoveContact_Username(string UserName)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -264,10 +264,10 @@ namespace LiveChat.Controllers
             try
             {
                 var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString()&& n.Deleted==false).Get();
 
                 var Contactee = await _supabaseClient.From<UserProfiledto>()
-                    .Where(n => n.UserName == UserName).Get();
+                    .Where(n => n.UserName == UserName && n.Deleted == false).Get();
 
                 try
                 {
@@ -282,7 +282,7 @@ namespace LiveChat.Controllers
 
                     if (hey2 == null)
                     {
-                        return BadRequest("Invalid User Name");
+                        return BadRequest("No user by sunch email");
                     }
 
                     await _supabaseClient
@@ -306,8 +306,8 @@ namespace LiveChat.Controllers
         [HttpGet("GetContacts"), Authorize]
         public async Task<IActionResult> GetContacts()
         {
-        var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+        var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
         {
             return BadRequest("Invalid Token");
         }
@@ -315,7 +315,7 @@ namespace LiveChat.Controllers
         try
         {
             var response = await _supabaseClient.From<Userdto>()
-                .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
 
             try
             {
@@ -356,8 +356,8 @@ namespace LiveChat.Controllers
         [HttpGet("GetBlockedContacts"), Authorize]
         public async Task<IActionResult> GetBlockedContacts()
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -365,7 +365,8 @@ namespace LiveChat.Controllers
             try
             {
                 var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
+
 
                 try
                 {
@@ -402,10 +403,10 @@ namespace LiveChat.Controllers
                 return BadRequest("No Connection, Please Try again");
             }
         }
-        [HttpPut("BlockAcontact_phoneNumber"), Authorize]
-        public async Task<IActionResult> BlockAcontact_phoneNumber(string phoneNumber)
+        [HttpPut("BlockContact_Email"), Authorize]
+        public async Task<IActionResult> BlockContact_Email(string emailPara)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (phoneNumberClaim == null)
             {
                 return BadRequest("Invalid Token");
@@ -414,10 +415,10 @@ namespace LiveChat.Controllers
             try
             {
                 var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == phoneNumberClaim.ToString()&& n.Deleted==false).Get();
 
                 var Contactee = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumber).Get();
+                    .Where(n => n.Email == emailPara && n.Deleted==false).Get();
 
                 try
                 {
@@ -432,7 +433,7 @@ namespace LiveChat.Controllers
 
                     if (hey2 == null)
                     {
-                        return BadRequest("Invalid Phone Number");
+                        return BadRequest("Already Deleted Account or email Invalid");
                     }
 
                     await _supabaseClient
@@ -470,8 +471,8 @@ namespace LiveChat.Controllers
         [HttpPut("BlockAcontact_userName"), Authorize]
         public async Task<IActionResult> BlockAcontact_userName(string UserName)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -479,10 +480,10 @@ namespace LiveChat.Controllers
             try
             {
                 var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString()&&n.Deleted==false).Get();
 
                 var Contactee = await _supabaseClient.From<UserProfiledto>()
-                    .Where(n => n.UserName == UserName).Get();
+                    .Where(n => n.UserName == UserName && n.Deleted==false).Get();
 
                 try
                 {
@@ -497,7 +498,7 @@ namespace LiveChat.Controllers
 
                     if (hey2 == null)
                     {
-                        return BadRequest("Invalid Phone Number");
+                        return BadRequest("Invalid Username or Contact Deleted");
                     }
 
                     await _supabaseClient
@@ -535,8 +536,8 @@ namespace LiveChat.Controllers
         [HttpPut("UnBlockAcontact_userName"), Authorize]
         public async Task<IActionResult> UnBlockAcontact_userName(string UserName)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -544,7 +545,7 @@ namespace LiveChat.Controllers
             try
             {
                 var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString()&&n.Deleted==false).Get();
 
                 var Contactee = await _supabaseClient.From<UserProfiledto>()
                     .Where(n => n.UserName == UserName).Get();
@@ -562,7 +563,7 @@ namespace LiveChat.Controllers
 
                     if (hey2 == null)
                     {
-                        return BadRequest("Invalid Phone Number");
+                        return BadRequest("Invalid Email");
                     }
 
                     await _supabaseClient
@@ -597,11 +598,11 @@ namespace LiveChat.Controllers
             }
         }
 
-        [HttpPut("UnBlockAcontact_phoneNumber"), Authorize]
-        public async Task<IActionResult> UnBlockAcontact_phoneNumber(string phoneNumber)
+        [HttpPut("UnBlockAcontact_Email"), Authorize]
+        public async Task<IActionResult> UnBlockAcontact_email(string emailPara)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -609,10 +610,10 @@ namespace LiveChat.Controllers
             try
             {
                 var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString()&&n.Deleted==false).Get();
 
                 var Contactee = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumber).Get();
+                    .Where(n => n.Email == emailPara).Get();
 
                 try
                 {
@@ -627,7 +628,7 @@ namespace LiveChat.Controllers
 
                     if (hey2 == null)
                     {
-                        return BadRequest("Invalid Phone Number");
+                        return BadRequest("Invalid Email");
                     }
 
                     await _supabaseClient
@@ -665,8 +666,8 @@ namespace LiveChat.Controllers
         [HttpGet("SearchContacts"), Authorize]
         public async Task<IActionResult> SearchUser(Query query)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
