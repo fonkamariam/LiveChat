@@ -16,8 +16,6 @@ public class ConversatinDto : BaseModel
 
     [Column("UpdatedTime")] public DateTime UpdatedTime { get; set; } = DateTime.UtcNow;
 
-    [Column("Type")] public string Type { get; set; } = "";
-
     [ForeignKey("LastMessage")] public long LastMessage { get; set; }
 
 }

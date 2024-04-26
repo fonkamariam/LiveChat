@@ -32,8 +32,8 @@ namespace LiveChat.Controllers
         [HttpPost("SendMessage"), Authorize]
         public async Task<IActionResult> SendMessage(MessageUser messageUser)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -42,7 +42,8 @@ namespace LiveChat.Controllers
             {
 
                 var GetSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString()&& n.Deleted==false)
+                    .Get();
 
 
                 try
@@ -58,12 +59,10 @@ namespace LiveChat.Controllers
 
                     var messageQuery = await _supabaseClient
                         .From<MessageDto>()
-                        .Where(n => ((((n.SenderId == Sender.Id)
-                                       && (n.RecpientId == messageUser.RecpientId))
-                                      && (n.ChatType == messageUser.ChatType))
+                        .Where(n => ((n.SenderId == Sender.Id)
+                                       && (n.RecpientId == messageUser.RecpientId)
                                      || ((n.SenderId == messageUser.RecpientId) &&
-                                         (n.RecpientId == Sender.Id)) &&
-                                     (n.ChatType == messageUser.ChatType)))
+                                         (n.RecpientId == Sender.Id))))
                         .Get();
                     // Two Decisions Made here....Is is their first ever chat(Create a ConvTable) or not(update ConvTable)
                     if (messageQuery.Models.Count != 0)
@@ -71,12 +70,12 @@ namespace LiveChat.Controllers
 
                         var fonkaParticipants = await _supabaseClient
                             .From<ParticipantDto>()
-                            .Where(p => p.UserId == Sender.Id && p.ChatType == messageUser.ChatType)
+                            .Where(p => p.UserId == Sender.Id)
                             .Get();
 
                         var barokParticipants = await _supabaseClient
                             .From<ParticipantDto>()
-                            .Where(p => p.UserId == messageUser.RecpientId && p.ChatType == messageUser.ChatType)
+                            .Where(p => p.UserId == messageUser.RecpientId)
                             .Get();
 
                         Dictionary<long, long> myFirstDictionary = new Dictionary<long, long>();
@@ -108,7 +107,6 @@ namespace LiveChat.Controllers
                         MessageDto newMessage = new MessageDto
                         {
                             TimeStamp = DateTime.UtcNow,
-                            ChatType = messageUser.ChatType,
                             MessageType = messageUser.MessageType,
                             Status = "Sent",
                             SenderId = Sender.Id,
@@ -158,7 +156,6 @@ namespace LiveChat.Controllers
                         MessageDto newMessage = new MessageDto
                         {
                             TimeStamp = DateTime.UtcNow,
-                            ChatType = messageUser.ChatType,
                             MessageType = messageUser.MessageType,
                             Status = "Sent",
                             SenderId = Sender.Id,
@@ -182,8 +179,7 @@ namespace LiveChat.Controllers
                                 {
                                     CreationTime = DateTime.UtcNow,
                                     UpdatedTime = DateTime.Now,
-                                    LastMessage = messageResposne.Id,
-                                    Type = messageResposne.ChatType
+                                    LastMessage = messageResposne.Id
 
                                 };
                                 try
@@ -209,13 +205,11 @@ namespace LiveChat.Controllers
                                             ParticipantDto newParticipant1 = new ParticipantDto
                                             {
                                                 UserId = Sender.Id,
-                                                ChatType = messageUser.ChatType,
                                                 ConversationId = newConvResponse.ConvId
                                             };
                                             ParticipantDto newParticipant2 = new ParticipantDto
                                             {
                                                 UserId = messageUser.RecpientId,
-                                                ChatType = messageUser.ChatType,
                                                 ConversationId = newConvResponse.ConvId
                                             };
 
@@ -272,8 +266,8 @@ namespace LiveChat.Controllers
         [HttpPut("EditMessage"), Authorize]
         public async Task<IActionResult> EditMessage(long parameterId, string parameterContent)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -282,7 +276,8 @@ namespace LiveChat.Controllers
             {
 
                 var GetSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false)
+                    .Get();
 
                 var Sender = GetSender.Models.FirstOrDefault();
 
@@ -292,11 +287,11 @@ namespace LiveChat.Controllers
                     return BadRequest("Invalid Token");
                 }
                 var updateMessage = await _supabaseClient.From<MessageDto>()
-                    .Where(n => n.Id == parameterId && n.SenderId == Sender.Id)
+                    .Where(n => n.Id == parameterId && n.SenderId == Sender.Id && n.Deleted == false)
                     .Set(n => n.Content, parameterContent)
                     .Update();
                 var hey = updateMessage.Models.FirstOrDefault();
-                if (hey == null)
+                if (hey == null) 
                 {
                     return BadRequest("Problem with the parameter Id");
                 }
@@ -315,231 +310,158 @@ namespace LiveChat.Controllers
         {
             try
             {
-                var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-                if (phoneNumberClaim == null)
+                var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+                if (emailClaim == null)
                 {
                     return BadRequest("Invalid Token");
                 }
 
-                var getSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
-
-                var sender = getSender.Models.FirstOrDefault();
-
-                if (sender == null)
+                try
                 {
-                    return BadRequest("Invalid Token");
-                }
 
-                // Two Decisions here, Is it the last message in the conversation (Yes:delete Conv,participant,message)
-                // (No:update the last message from conversation table and delete the message from the message table)
-                var getMessageInfo = await _supabaseClient.From<MessageDto>()
-                    .Where(n => n.Id == parameterId)
-                    .Get();
+                    var getSender = await _supabaseClient.From<Userdto>()
+                        .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false)
+                        .Get();
 
-                var getRecpientId = getMessageInfo.Models.FirstOrDefault();
-                if (getRecpientId == null)
-                {
-                    return BadRequest("Problem with the parameter Id");
-                }
+                    var sender = getSender.Models.FirstOrDefault();
 
-                var checkMessageTable = await _supabaseClient.From<MessageDto>()
-                    .Where(n => ((n.SenderId == sender.Id || n.SenderId == getRecpientId.RecpientId) &&
-                                 (n.RecpientId == sender.Id || n.RecpientId == getRecpientId.RecpientId) &&
-                                 n.ChatType == getRecpientId.ChatType))
-                    .Get();
-                var count = checkMessageTable.Models.Count();
-                if (count == 0)
-                {
-                    return BadRequest("Danger when fetching message");
-                }
+                    if (sender == null)
+                    {
+                        return BadRequest("Invalid Token");
+                    }
 
-                // execute first decision 
-                if (count == 1)
-                {
+                    // Two Decisions here, Is it the last message in the conversation (Yes:delete Conv,participant,message)
+                    // (No:update the last message from conversation table and delete the message from the message table)
+                    var getMessageInfo = await _supabaseClient.From<MessageDto>()
+                        .Where(n => n.Id == parameterId && n.Deleted == false)
+                        .Get();
+
+                    var getRecpientId = getMessageInfo.Models.FirstOrDefault();
+                    if (getRecpientId == null)
+                    {
+                        return BadRequest("Problem with the parameter Id");
+                    }
+
+                    var checkMessageTable = await _supabaseClient.From<MessageDto>()
+                        .Where(n => ((n.SenderId == sender.Id || n.SenderId == getRecpientId.RecpientId) &&
+                                     (n.RecpientId == sender.Id || n.RecpientId == getRecpientId.RecpientId) && n.Deleted == false))
+                        .Get();
+                    var count = checkMessageTable.Models.Count();
+                    if (count == 0)
+                    {
+                        return BadRequest("Danger when fetching message");
+                    }
+
+                    // execute first decision 
+                    if (count == 1)
+                    {
+                        try
+                        {
+                            await _supabaseClient.From<ParticipantDto>()
+                                .Where(n => n.ConversationId == getRecpientId.ConvId)
+                                .Delete();
+                            await _supabaseClient.From<ConversatinDto>()
+                                .Where(n => n.ConvId == getRecpientId.ConvId)
+                                .Delete();
+                            await _supabaseClient.From<MessageDto>()
+                                .Where(n => n.Id == parameterId)
+                                .Set(n => n.Deleted, true)
+                                .Update();
+                            return Ok("Deleted");
+                        }
+                        catch (Exception)
+                        {
+                            return BadRequest(
+                                "Problem deleting one of Participants, Conversation or Message from their respective table");
+                        }
+
+
+                    }
+
+                    // Second Decision tree
                     try
                     {
-                        await _supabaseClient.From<ParticipantDto>()
-                            .Where(n => n.ConversationId == getRecpientId.ConvId)
-                            .Delete();
-                        await _supabaseClient.From<ConversatinDto>()
+                        var getConvid = await _supabaseClient.From<ConversatinDto>()
                             .Where(n => n.ConvId == getRecpientId.ConvId)
-                            .Delete();
+                            .Get();
+                        // Is it the Last message or not?
+                        //Yes it is
+                        var getconvId = getConvid.Models.FirstOrDefault();
+
+
+                        if (parameterId == getconvId.LastMessage)
+                        {
+                            var lastestLastMessage = await _supabaseClient.From<MessageDto>()
+                                .Where(n => ((n.SenderId == sender.Id || n.SenderId == getRecpientId.RecpientId) &&
+                                             (n.RecpientId == sender.Id || n.RecpientId == getRecpientId.RecpientId)  && n.Deleted == false))
+                                .Order(n => n.TimeStamp, Constants.Ordering.Descending)
+                                .Get();
+
+                            var secondlastMessage = lastestLastMessage.Models.Skip(1).FirstOrDefault();
+                            await _supabaseClient.From<ConversatinDto>()
+                                .Where(n => n.ConvId == getRecpientId.ConvId)
+                                .Set(n => n.LastMessage, secondlastMessage.Id)
+                                .Update();
+                        }
+
                         await _supabaseClient.From<MessageDto>()
                             .Where(n => n.Id == parameterId)
-                            .Delete();
+                            .Set(n => n.Deleted, true)
+                            .Update();
+
+
                         return Ok("Deleted");
                     }
                     catch (Exception)
                     {
                         return BadRequest(
-                            "Problem deleting one of Participants, Conversation or Message from their respective table");
+                            "Problem either deleting Message or updating fetching latest message and updating it from the message table");
                     }
-
-
-                }
-
-                // Second Decision tree
-                try
-                {
-                    var getConvid = await _supabaseClient.From<ConversatinDto>()
-                        .Where(n => n.ConvId == getRecpientId.ConvId)
-                        .Get();
-                    // Is it the Last message or not?
-                    //Yes it is
-                    var getconvId = getConvid.Models.FirstOrDefault();
-
-
-                    if (parameterId == getconvId.LastMessage)
-                    {
-                        var lastestLastMessage = await _supabaseClient.From<MessageDto>()
-                            .Where(n => ((n.SenderId == sender.Id || n.SenderId == getRecpientId.RecpientId) &&
-                                         (n.RecpientId == sender.Id || n.RecpientId == getRecpientId.RecpientId) &&
-                                         n.ChatType == getRecpientId.ChatType))
-                            .Order(n => n.TimeStamp, Constants.Ordering.Descending)
-                            .Get();
-
-                        var secondlastMessage = lastestLastMessage.Models.Skip(1).FirstOrDefault();
-                        await _supabaseClient.From<ConversatinDto>()
-                            .Where(n => n.ConvId == getRecpientId.ConvId)
-                            .Set(n => n.LastMessage, secondlastMessage.Id)
-                            .Update();
-                    }
-
-                    await _supabaseClient.From<MessageDto>()
-                        .Where(n => n.Id == parameterId)
-                        .Delete();
-
-
-                    return Ok("Deleted");
                 }
                 catch (Exception)
                 {
-                    return BadRequest(
-                        "Problem either deleting Message or updating fetching latest message and updating it from the message table");
+                    return BadRequest("No Connection");
                 }
+
+
             }
-            catch (Exception)
+            catch(Exception)
             {
-                return BadRequest("No Connection");
+                return BadRequest ("Problem when deleting a message");
             }
         }
 
         [HttpGet("GetMessageHistory"), Authorize]
         public async Task<IActionResult> GetMessageHistory(string query)
-        {
-            try
             {
-                var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-                if (phoneNumberClaim == null)
-                {
-                    return BadRequest("Invalid Token");
-                }
-
-                var getSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
-
-                var sender = getSender.Models.FirstOrDefault();
-
-                if (sender == null)
-                {
-                    return BadRequest("Invalid Token");
-                }
-
-                var getEverything = await _supabaseClient.From<MessageDto>()
-                    .Where(n => (n.SenderId == sender.Id) || (n.RecpientId == sender.Id))
-                    .Where(n => n.Content.Contains(query))
-                    .Order(n => n.TimeStamp, Constants.Ordering.Descending)
-                    .Get();
-
-                Array heygetEverything = getEverything.Models.ToArray();
-                return Ok(heygetEverything);
-
-
-            }
-            catch (Exception)
-            {
-                return BadRequest("Connection Problem");
-            }
-        }
-
-        [HttpGet("GetMessageId"), Authorize]
-        public async Task<IActionResult> GetMessageId(MessageUser messageUser)
-        {
-
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
-            {
-                return BadRequest("Invalid Token");
-            }
-
-            try
-            {
-
-                var GetSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
-
-
+                
                 try
                 {
-                    var Sender = GetSender.Models.FirstOrDefault();
-
-
-                    if (Sender == null)
+                    var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+                    if (emailClaim == null)
                     {
                         return BadRequest("Invalid Token");
                     }
 
-                    var fonkaParticipants = await _supabaseClient
-                        .From<ParticipantDto>()
-                        .Where(p => p.UserId == Sender.Id && p.ChatType == messageUser.ChatType)
+
+                    var getSender = await _supabaseClient.From<Userdto>()
+                        .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false)
                         .Get();
+                    var sender = getSender.Models.FirstOrDefault();
 
-                    var barokParticipants = await _supabaseClient
-                        .From<ParticipantDto>()
-                        .Where(p => p.UserId == messageUser.RecpientId && p.ChatType == messageUser.ChatType)
-                        .Get();
-
-                    Dictionary<long, long> myFirstDictionary = new Dictionary<long, long>();
-                    Dictionary<long, long> mySeconDictionary = new Dictionary<long, long>();
-
-                    myFirstDictionary =
-                        fonkaParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
-                    mySeconDictionary =
-                        barokParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
-
-                    long ConvId = 0;
-                    foreach (var key in myFirstDictionary.Keys)
+                    if (sender == null)
                     {
-
-                        if (mySeconDictionary.ContainsKey(myFirstDictionary[key]))
-                        {
-                            ConvId = myFirstDictionary[key];
-                            break;
-                        }
+                        return BadRequest("Invalid Token");
                     }
 
-                    if (ConvId == 0)
-                    {
-                        return BadRequest("Internal Server Error, ConvId not found when supposed to be found");
-                    }
-
-                    // I have the coversation Id
-                    // Get the message Id from the Database
-                    var getMessageinfo = await _supabaseClient.From<MessageDto>()
-                        .Where(n => n.SenderId == Sender.Id)
-                        .Where(n => n.RecpientId == messageUser.RecpientId)
-                        .Where(n => n.ChatType == messageUser.ChatType)
-                        .Where(n => n.ConvId == ConvId)
-                        .Where(n => n.Content == messageUser.Content)
+                    var getEverything = await _supabaseClient.From<MessageDto>()
+                        .Where(n => (n.SenderId == sender.Id) || (n.RecpientId == sender.Id) && n.Deleted==false)
+                        .Where(n => n.Content.Contains(query))
+                        .Order(n => n.TimeStamp, Constants.Ordering.Descending)
                         .Get();
-                    var messageId = getMessageinfo.Models.FirstOrDefault();
-                    if (messageId == null)
-                    {
-                        return BadRequest("Internal Server Error when fetching message Info, Consult Builder");
-                    }
 
-                    return Ok(messageId.Id);
+                    Array heygetEverything = getEverything.Models.ToArray();
+                    return Ok(heygetEverything);
 
 
                 }
@@ -547,20 +469,106 @@ namespace LiveChat.Controllers
                 {
                     return BadRequest("Connection Problem");
                 }
+            }
 
-            }
-            catch
+        [HttpGet("GetMessageId"), Authorize]
+        public async Task<IActionResult> GetMessageId(MessageUser messageUser)
             {
-                return BadRequest("Connection Problem");
+
+                var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+                if (emailClaim == null)
+                {
+                    return BadRequest("Invalid Token");
+                }
+
+                try
+                {
+
+                    var GetSender = await _supabaseClient.From<Userdto>()
+                        .Where(n => n.Email == emailClaim.ToString()&& n.Deleted==false).Get();
+
+
+                    try
+                    {
+                        var Sender = GetSender.Models.FirstOrDefault();
+
+
+                        if (Sender == null)
+                        {
+                            return BadRequest("Invalid Token");
+                        }
+
+                        var fonkaParticipants = await _supabaseClient
+                            .From<ParticipantDto>()
+                            .Where(p => p.UserId == Sender.Id )
+                            .Get();
+
+                        var barokParticipants = await _supabaseClient
+                            .From<ParticipantDto>()
+                            .Where(p => p.UserId == messageUser.RecpientId)
+                            .Get();
+
+                        Dictionary<long, long> myFirstDictionary = new Dictionary<long, long>();
+                        Dictionary<long, long> mySeconDictionary = new Dictionary<long, long>();
+
+                        myFirstDictionary =
+                            fonkaParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
+                        mySeconDictionary =
+                            barokParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
+
+                        long ConvId = 0;
+                        foreach (var key in myFirstDictionary.Keys)
+                        {
+
+                            if (mySeconDictionary.ContainsKey(myFirstDictionary[key]))
+                            {
+                                ConvId = myFirstDictionary[key];
+                                break;
+                            }
+                        }
+
+                        if (ConvId == 0)
+                        {
+                            return BadRequest("Internal Server Error, ConvId not found when supposed to be found");
+                        }
+
+                        // I have the coversation Id
+                        // Get the message Id from the Database
+                        var getMessageinfo = await _supabaseClient.From<MessageDto>()
+                            .Where(n => n.SenderId == Sender.Id)
+                            .Where(n => n.RecpientId == messageUser.RecpientId)
+                            .Where(n => n.ConvId == ConvId)
+                            .Where(n => n.Content == messageUser.Content)
+                            .Where(n=>n.Deleted==false)
+                            .Get();
+                        var messageId = getMessageinfo.Models.FirstOrDefault();
+                        if (messageId == null)
+                        {
+                            return BadRequest("Internal Server Error when fetching message Info, Consult Builder");
+                        }
+
+                        return Ok(messageId.Id);
+
+
+                    }
+                    catch (Exception)
+                    {
+                        return BadRequest("Connection Problem");
+                    }
+
+                }
+                catch
+                {
+                    return BadRequest("Connection Problem");
+                }
             }
-        }
 
         [HttpGet("GetConversationId"), Authorize]
 
         public async Task<IActionResult> GetConversationId(long talkee, string parameterType)
-        {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            {
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -569,56 +577,57 @@ namespace LiveChat.Controllers
             {
 
                 var GetSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
+
 
 
                 try
                 {
-                    var Sender = GetSender.Models.FirstOrDefault();
+                        var Sender = GetSender.Models.FirstOrDefault();
 
 
-                    if (Sender == null)
-                    {
-                        return BadRequest("Invalid Token");
-                    }
-
-                    // get Conversation Id
-                    var fonkaParticipants = await _supabaseClient
-                        .From<ParticipantDto>()
-                        .Where(p => p.UserId == Sender.Id && p.ChatType == parameterType)
-                        .Get();
-
-                    var barokParticipants = await _supabaseClient
-                        .From<ParticipantDto>()
-                        .Where(p => p.UserId == talkee && p.ChatType == parameterType)
-                        .Get();
-
-                    Dictionary<long, long> myFirstDictionary = new Dictionary<long, long>();
-                    Dictionary<long, long> mySeconDictionary = new Dictionary<long, long>();
-
-                    myFirstDictionary =
-                        fonkaParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
-                    mySeconDictionary =
-                        barokParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
-
-                    long ConvId = 0;
-                    foreach (var key in myFirstDictionary.Keys)
-                    {
-
-                        if (mySeconDictionary.ContainsKey(myFirstDictionary[key]))
+                        if (Sender == null)
                         {
-                            ConvId = myFirstDictionary[key];
-                            break;
+                            return BadRequest("Invalid Token");
                         }
-                    }
 
-                    if (ConvId == 0)
-                    {
-                        return BadRequest("No Conversation with user with provided user");
-                    }
+                        // get Conversation Id
+                        var fonkaParticipants = await _supabaseClient
+                            .From<ParticipantDto>()
+                            .Where(p => p.UserId == Sender.Id)
+                            .Get();
 
-                    // I have the coversation Id
-                    return Ok(ConvId);
+                        var barokParticipants = await _supabaseClient
+                            .From<ParticipantDto>()
+                            .Where(p => p.UserId == talkee)
+                            .Get();
+
+                        Dictionary<long, long> myFirstDictionary = new Dictionary<long, long>();
+                        Dictionary<long, long> mySeconDictionary = new Dictionary<long, long>();
+
+                        myFirstDictionary =
+                            fonkaParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
+                        mySeconDictionary =
+                            barokParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
+
+                        long ConvId = 0;
+                        foreach (var key in myFirstDictionary.Keys)
+                        {
+
+                            if (mySeconDictionary.ContainsKey(myFirstDictionary[key]))
+                            {
+                                ConvId = myFirstDictionary[key];
+                                break;
+                            }
+                        }
+
+                        if (ConvId == 0)
+                        {
+                            return BadRequest("No Conversation with user with provided user");
+                        }
+
+                        // I have the coversation Id
+                        return Ok(ConvId);
 
                 }
                 catch (Exception)
@@ -630,23 +639,26 @@ namespace LiveChat.Controllers
             {
                 return BadRequest("Connection Problem first part");
             }
-        }
+            }
 
 
         [HttpGet("GetConversationInfo"), Authorize]
 
         public async Task<IActionResult> GetConversationInfo(long parameterConvId)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
 
             try
             {
+
                 var GetSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
+
+
 
                 try
                 {
@@ -680,16 +692,18 @@ namespace LiveChat.Controllers
 
         public async Task<IActionResult> GetConversationMessage(long parameterConvId)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
 
             try
             {
+
                 var GetSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
+
 
                 try
                 {
@@ -703,7 +717,7 @@ namespace LiveChat.Controllers
 
                     // get Conversation info 
                     var convMessage = await _supabaseClient.From<MessageDto>()
-                        .Where(n => n.ConvId == parameterConvId)
+                        .Where(n => n.ConvId == parameterConvId && n.Deleted==false)
                         .Order(n => n.TimeStamp, Constants.Ordering.Ascending)
                         .Get();
                     Array allmessArray = convMessage.Models.ToArray();
@@ -721,19 +735,20 @@ namespace LiveChat.Controllers
         }
 
         [HttpGet("GetAllConversationDirect"), Authorize]
-
+        
         public async Task<IActionResult> GetAllConversationDirect()
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
 
             try
             {
+
                 var GetSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
 
                 try
                 {
@@ -742,12 +757,12 @@ namespace LiveChat.Controllers
 
                     if (Sender == null)
                     {
-                        return BadRequest("Invalid Token");
+                        return BadRequest("Invalid Token"); 
                     }
 
                     // get all Conversation info
                     var allConvId = await _supabaseClient.From<ParticipantDto>()
-                        .Where(n => n.UserId == Sender.Id && n.ChatType == "Direct")
+                        .Where(n => n.UserId == Sender.Id)
                         .Get();
                     var allConvIdArray = allConvId.Models.Select(p => p.ConversationId).ToArray();
 
@@ -760,7 +775,7 @@ namespace LiveChat.Controllers
 
                     // Check if there is a conversation between self
                     var fonkaParticipants = await _supabaseClient.From<ParticipantDto>()
-                        .Where(n => n.UserId == Sender.Id && n.ChatType == "Direct")
+                        .Where(n => n.UserId == Sender.Id)
                         .Get();
                     var convIdsWithTwoFonkaParticipants = fonkaParticipants.Models
                         .GroupBy(n => n.ConversationId)
@@ -805,77 +820,11 @@ namespace LiveChat.Controllers
         }
 
 
-        [HttpGet("GetAllConversationGroup"), Authorize]
-
-        public async Task<IActionResult> GetAllConversationGroup()
-        {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
-            {
-                return BadRequest("Invalid Token");
-            }
-
-            try
-            {
-                var GetSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
-
-                try
-                {
-                    var Sender = GetSender.Models.FirstOrDefault();
-
-
-                    if (Sender == null)
-                    {
-                        return BadRequest("Invalid Token");
-                    }
-
-                    // get all Conversation info
-                    var allConvId = await _supabaseClient.From<ParticipantDto>()
-                        .Where(n => n.UserId == Sender.Id && n.ChatType == "Group")
-                        .Get();
-                    var allConvIdArray = allConvId.Models.Select(p=>p.ConversationId).ToArray();
-
-                    var allConvIdOrdered = await _supabaseClient.From<ConversatinDto>()
-                        .Where(n => allConvIdArray.Contains(n.ConvId))
-                        .Order(n => n.UpdatedTime, Constants.Ordering.Descending)
-                        .Get();
-
-                    var final = allConvIdOrdered.Models.Select(c => c.ConvId).ToArray();
-
-
-
-                    var dicUserConv = await _supabaseClient.From<ParticipantDto>()
-                        .Where(n => (final.Contains(n.ConversationId)) && (n.UserId != Sender.Id))
-                        .Get();
-
-
-                    var dicUserConvFinal = dicUserConv.Models.OrderBy(p => Array.IndexOf(final, p.ConversationId))
-                        .ToArray();
-
-
-
-
-
-                    return Ok(dicUserConvFinal);
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Problem in the conversation Id in the parameter");
-                }
-            }
-            catch (Exception)
-            {
-                return BadRequest("Connection Problem first part");
-            }
-        }
-
-
         [HttpDelete("DeleteConversation"), Authorize]
         public async Task<IActionResult> DeleteConversaion(long parameterConvId)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -884,7 +833,8 @@ namespace LiveChat.Controllers
             {
 
                 var GetSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
+
 
 
                 try
@@ -901,19 +851,20 @@ namespace LiveChat.Controllers
                     // Delete Conversation finally
 
                     await _supabaseClient.From<MessageDto>()
-                        .Where(n => n.ConvId == parameterConvId && n.ChatType == "Direct")
-                        .Delete();
+                        .Where(n => n.ConvId == parameterConvId) 
+                        .Set(n=>n.Deleted,true)
+                        .Update();
                     await _supabaseClient.From<ParticipantDto>()
-                        .Where(n => n.ConversationId == parameterConvId && n.ChatType == "Direct")
+                        .Where(n => n.ConversationId == parameterConvId)
                         .Delete();
                     await _supabaseClient.From<ConversatinDto>()
-                        .Where(n => n.ConvId == parameterConvId && n.Type == "Direct")
+                        .Where(n => n.ConvId == parameterConvId)
                         .Delete();
-                    return Ok("Succesfully Deleted");
+                    return Ok("Successfully Deleted");
                 }
                 catch
                 {
-                    return BadRequest("Probelm");
+                    return BadRequest("Problem");
                 }
             }
             catch

@@ -16,7 +16,6 @@ public class ParticipantDto : BaseModel
 
     [ForeignKey("ConversationId")] public long ConversationId { get; set; }
 
-    [Column("ChatType")] public string ChatType { get; set; } = "";
 }
 
 

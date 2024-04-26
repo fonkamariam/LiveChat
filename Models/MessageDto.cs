@@ -18,13 +18,13 @@ public class MessageDto : BaseModel
 
         [Column("Status")] public string? Status { get; set; } = "";
 
-        [Column("ChatType")] public string ChatType { get; set; } = "";
-
         [Column("MessageType")] public string MessageType { get; set; } = "";
 
         [ForeignKey("SenderId")] public long SenderId { get; set; }
         
         [ForeignKey("RecpientId")] public long RecpientId { get; set; }
+
+        [Column("Deleted")] public bool Deleted { get; set; }
 
         [ForeignKey("ConvId")] public long ConvId { get; set; }
 
