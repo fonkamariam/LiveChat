@@ -34,8 +34,8 @@ namespace LiveChat.Controllers
         [HttpPost("CreateGroup")]
         public async Task<IActionResult> CreateGroup(GroupUser groupUser)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emilClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emilClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -44,7 +44,7 @@ namespace LiveChat.Controllers
             {
 
                 var getSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emilClaim.ToString()&&n.Deleted==false).Get();
 
                 var sender = getSender.Models.FirstOrDefault();
 
@@ -94,7 +94,6 @@ namespace LiveChat.Controllers
                         Description = groupUser.Description,
                         CreatorId = sender.Id,
                         G_CoversationId = newConversationId.Id
-
                     };
 
                     var createGroup = await _supabaseClient.From<GroupDto>().Insert(grouptoInsert);
@@ -126,7 +125,7 @@ namespace LiveChat.Controllers
                     var addedMemberAdmin = addMemberAdmin.Models.First();
                     if (addedMemberAdmin == null)
                     {
-                        return BadRequest("Probelm when adding the user to the groupmember table as admin");
+                        return BadRequest("Problem when adding the user to the group Member table as admin");
                     }
 
                     return Ok(newGroupModel);
@@ -146,8 +145,8 @@ namespace LiveChat.Controllers
         [HttpPost("AddMember")]
         public async Task<IActionResult> AddMemberTGroup(long groupId , List<long> Members)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emilClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emilClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -156,7 +155,7 @@ namespace LiveChat.Controllers
             {
 
                 var getSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emilClaim.ToString() && n.Deleted == false).Get();
 
                 var sender = getSender.Models.FirstOrDefault();
 
@@ -171,7 +170,7 @@ namespace LiveChat.Controllers
 
 
                     var checkGroupid = await _supabaseClient.From<GroupMemberDto>()
-                        .Where(n => n.GroupId == groupId)
+                        .Where(n => n.GroupId == groupId && n.Deleted==false)
                         .Get();
                     var vertifyingGroupid = checkGroupid.Models.First();
                     if (vertifyingGroupid == null || vertifyingGroupid.Role != "Admin")
@@ -219,8 +218,8 @@ namespace LiveChat.Controllers
         [HttpPost("RemoveMember")]
         public async Task<IActionResult> RemoveMemberGroup(long groupId, List<long> Members)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emilClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emilClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -229,7 +228,7 @@ namespace LiveChat.Controllers
             {
 
                 var getSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emilClaim.ToString() && n.Deleted == false).Get();
 
                 var sender = getSender.Models.FirstOrDefault();
 
@@ -244,7 +243,7 @@ namespace LiveChat.Controllers
 
 
                     var checkGroupid = await _supabaseClient.From<GroupMemberDto>()
-                        .Where(n => n.GroupId == groupId)
+                        .Where(n => n.GroupId == groupId && n.Deleted == false)
                         .Get();
                     var vertifyingGroupid = checkGroupid.Models.First();
                     if (vertifyingGroupid == null || vertifyingGroupid.Role != "Admin")
@@ -255,7 +254,8 @@ namespace LiveChat.Controllers
 
                     await _supabaseClient.From<GroupMemberDto>()
                         .Where(n=>n.GroupId == groupId && Members.Contains(n.UserId))
-                        .Delete();
+                        .Set(u=>u.Deleted ,true)
+                        .Update();
 
 
                     return Ok("Successfully Deleted");
@@ -275,8 +275,8 @@ namespace LiveChat.Controllers
         [HttpPost("LeaveGroup")]
         public async Task<IActionResult> LeaveGroup(long groupId)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emilClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emilClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -285,7 +285,7 @@ namespace LiveChat.Controllers
             {
 
                 var getSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+                    .Where(n => n.Email == emilClaim.ToString() && n.Deleted == false).Get();
 
                 var sender = getSender.Models.FirstOrDefault();
 
@@ -298,9 +298,9 @@ namespace LiveChat.Controllers
                 try
                 {
                     var checkGroupid = await _supabaseClient.From<GroupDto>()
-                        .Where(n => n.GroupId == groupId)
+                        .Where(n => n.GroupId == groupId && n.Deleted == false)
                         .Get();
-                    var vertifyingGroupid = checkGroupid.Models.First();
+                    var vertifyingGroupid = checkGroupid.Models.First(); 
                     
                     if (vertifyingGroupid == null)
                     {
@@ -323,8 +323,9 @@ namespace LiveChat.Controllers
 
 
                     await _supabaseClient.From<GroupMemberDto>()
-                        .Where(n => n.GroupId == groupId && n.UserId==sender.Id)
-                        .Delete();
+                        .Where(n => n.GroupId == groupId && n.UserId == sender.Id)
+                        .Set(u => u.Deleted ,true)
+                        .Update();
 
                     return Ok("Successfully Left Group");
                 }
@@ -343,8 +344,8 @@ namespace LiveChat.Controllers
         [HttpPost("SendGroupMessage")]
         public async Task<IActionResult> SendGroupMessage(GroupMessagePostModel groupMessagePostModel)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emilClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emilClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -353,8 +354,7 @@ namespace LiveChat.Controllers
             {
 
                 var getSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
-
+                    .Where(n => n.Email == emilClaim.ToString() && n.Deleted == false).Get();
                 var sender = getSender.Models.FirstOrDefault();
 
 
@@ -366,7 +366,7 @@ namespace LiveChat.Controllers
                 try
                 {
                     var checkGroupid = await _supabaseClient.From<GroupDto>()
-                        .Where(n => n.GroupId == groupMessagePostModel.GroupID)
+                        .Where(n => n.GroupId == groupMessagePostModel.GroupID && n.Deleted == false)
                         .Get();
                     var vertifyingGroupid = checkGroupid.Models.First();
                     if (vertifyingGroupid == null)
@@ -375,7 +375,7 @@ namespace LiveChat.Controllers
                     }
                     // I have the conversation Id
                     var checkSenderid = await _supabaseClient.From<GroupMemberDto>()
-                        .Where(n => n.UserId == sender.Id && n.GroupId == groupMessagePostModel.GroupID)
+                        .Where(n => n.UserId == sender.Id && n.GroupId == groupMessagePostModel.GroupID && n.Deleted==false)
                         .Get();
 
                     var vertifySenderAMember = checkSenderid.Models.First();
@@ -427,8 +427,8 @@ namespace LiveChat.Controllers
         [HttpGet("GetGroupMessages")]
         public async Task<IActionResult> GetGroupMessages(long groupID)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emilClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emilClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -437,8 +437,7 @@ namespace LiveChat.Controllers
             {
 
                 var getSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
-
+                    .Where(n => n.Email == emilClaim.ToString() && n.Deleted == false).Get();
                 var sender = getSender.Models.FirstOrDefault();
 
 
@@ -450,7 +449,7 @@ namespace LiveChat.Controllers
                 try
                 {
                     var checkGroupid = await _supabaseClient.From<GroupDto>()
-                        .Where(n => n.GroupId == groupID)
+                        .Where(n => n.GroupId == groupID && n.Deleted == false)
                         .Get();
                     var vertifyingGroupid = checkGroupid.Models.First();
                     if (vertifyingGroupid == null)
@@ -459,7 +458,7 @@ namespace LiveChat.Controllers
                     }
                     // I have the conversation Id
                     var checkSenderid = await _supabaseClient.From<GroupMemberDto>()
-                        .Where(n => n.UserId == sender.Id && n.GroupId == groupID)
+                        .Where(n => n.UserId == sender.Id && n.GroupId == groupID &&n.Deleted==false)
                         .Get();
 
                     var vertifySenderAMember = checkSenderid.Models.First();
@@ -469,7 +468,7 @@ namespace LiveChat.Controllers
                     }
 
                     var getEverything = await _supabaseClient.From<GroupMessageDto>()
-                        .Where(n => n.MemberSenderId == sender.Id && n.RecGroupId == groupID)
+                        .Where(n => n.MemberSenderId == sender.Id && n.RecGroupId == groupID && n.Deleted==false)
                         .Get();
                     var messageArray = getEverything.Models.ToArray();
                     return Ok(messageArray);
@@ -487,8 +486,8 @@ namespace LiveChat.Controllers
         [HttpPut("EditGroupMessage")]
         public async Task<IActionResult> EditGroupMessage(long groupId, long messageId, string newContent)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emilClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emilClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -497,8 +496,7 @@ namespace LiveChat.Controllers
             {
 
                 var getSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
-
+                    .Where(n => n.Email == emilClaim.ToString() && n.Deleted == false).Get();
                 var sender = getSender.Models.FirstOrDefault();
 
 
@@ -510,7 +508,7 @@ namespace LiveChat.Controllers
                 try
                 {
                     var checkGroupid = await _supabaseClient.From<GroupDto>()
-                        .Where(n => n.GroupId == groupId)
+                        .Where(n => n.GroupId == groupId &&n.Deleted==false)
                         .Get();
                     var vertifyingGroupid = checkGroupid.Models.First();
                     if (vertifyingGroupid == null)
@@ -520,7 +518,7 @@ namespace LiveChat.Controllers
                     // I have the conversation Id
                     
                     var checkSenderid = await _supabaseClient.From<GroupMemberDto>()
-                        .Where(n => n.UserId == sender.Id && n.GroupId == groupId)
+                        .Where(n => n.UserId == sender.Id && n.GroupId == groupId && n.Deleted==false)
                         .Get();
 
                     var vertifySenderAMember = checkSenderid.Models.First();
@@ -530,7 +528,7 @@ namespace LiveChat.Controllers
                     }
 
                     var checkMessageId = await _supabaseClient.From<GroupMessageDto>()
-                        .Where(n => n.MemberSenderId == sender.Id && n.Id == messageId)
+                        .Where(n => n.MemberSenderId == sender.Id && n.Id == messageId &&n.Deleted==false)
                         .Get();
                     var checkingMessageId = checkMessageId.Models.First();
                     if (checkingMessageId==null)
@@ -539,7 +537,7 @@ namespace LiveChat.Controllers
                     }
 
                     var updateMessageId = await _supabaseClient.From<GroupMessageDto>()
-                        .Where(n => n.Id == messageId)
+                        .Where(n => n.Id == messageId && n.Deleted==false)
                         .Set(n => n.Content, newContent)
                         .Update();
 
@@ -578,19 +576,17 @@ namespace LiveChat.Controllers
         [HttpDelete("DeleteGroupMessage")]
         public async Task<IActionResult> DeleteGroupMessage(long groupId, long messageId)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emilClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emilClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
 
             try
-
             {
 
                 var getSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
-
+                    .Where(n => n.Email == emilClaim.ToString() && n.Deleted == false).Get();
                 var sender = getSender.Models.FirstOrDefault();
 
 
@@ -602,7 +598,7 @@ namespace LiveChat.Controllers
                 try
                 {
                     var checkGroupid = await _supabaseClient.From<GroupDto>()
-                        .Where(n => n.GroupId == groupId)
+                        .Where(n => n.GroupId == groupId &&n.Deleted==false)
                         .Get();
                     var vertifyingGroupid = checkGroupid.Models.First();
                     if (vertifyingGroupid == null)
@@ -612,7 +608,7 @@ namespace LiveChat.Controllers
                     // I have the conversation Id
 
                     var checkSenderid = await _supabaseClient.From<GroupMemberDto>()
-                        .Where(n => n.UserId == sender.Id && n.GroupId == groupId)
+                        .Where(n => n.UserId == sender.Id && n.GroupId == groupId &&n.Deleted==false)
                         .Get();
 
                     var vertifySenderAMember = checkSenderid.Models.First();
@@ -622,7 +618,7 @@ namespace LiveChat.Controllers
                     }
 
                     var checkMessageId = await _supabaseClient.From<GroupMessageDto>()
-                        .Where(n => n.MemberSenderId == sender.Id && n.Id == messageId)
+                        .Where(n => n.MemberSenderId == sender.Id && n.Id == messageId &&n.Deleted==false)
                         .Get();
                     var checkingMessageId = checkMessageId.Models.First();
                     if (checkingMessageId == null)
@@ -639,7 +635,7 @@ namespace LiveChat.Controllers
                     {
                         //fetch the next last message
                         var fetchNextMessage = await _supabaseClient.From<GroupMessageDto>()
-                            .Where(n => n.MemberSenderId == sender.Id && n.RecGroupId== groupId)
+                            .Where(n => n.MemberSenderId == sender.Id && n.RecGroupId== groupId && n.Deleted==false)
                             .Order(n=>n.Created_at,Constants.Ordering.Descending)
                             .Range(1,1)
                             .Get();
@@ -669,8 +665,9 @@ namespace LiveChat.Controllers
                     }
 
                     await _supabaseClient.From<GroupMessageDto>()
-                        .Where(n => n.Id == messageId)
-                        .Delete();
+                        .Where(n => n.Id == messageId && n.Deleted == false)
+                        .Set(u => u.Deleted, true)
+                        .Update();
                     
                     return Ok("Successfully Deleted");
                 }
@@ -689,8 +686,8 @@ namespace LiveChat.Controllers
         [HttpGet("GetGroupMembers")]
         public async Task<IActionResult> GetGroupMembers(long groupID)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emilClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emilClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -699,8 +696,7 @@ namespace LiveChat.Controllers
             {
 
                 var getSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
-
+                    .Where(n => n.Email == emilClaim.ToString() && n.Deleted == false).Get();
                 var sender = getSender.Models.FirstOrDefault();
 
 
@@ -712,7 +708,7 @@ namespace LiveChat.Controllers
                 try
                 {
                     var checkGroupid = await _supabaseClient.From<GroupDto>()
-                        .Where(n => n.GroupId == groupID)
+                        .Where(n => n.GroupId == groupID &&n.Deleted==false)
                         .Get();
                     var vertifyingGroupid = checkGroupid.Models.First();
                     if (vertifyingGroupid == null)
@@ -721,7 +717,7 @@ namespace LiveChat.Controllers
                     }
                     // I have the conversation Id
                     var checkSenderid = await _supabaseClient.From<GroupMemberDto>()
-                        .Where(n => n.UserId == sender.Id && n.GroupId == groupID)
+                        .Where(n => n.UserId == sender.Id && n.GroupId == groupID && n.Deleted==false)
                         .Get();
 
                     var vertifySenderAMember = checkSenderid.Models.First();
@@ -731,7 +727,7 @@ namespace LiveChat.Controllers
                     }
 
                     var getMembers = await _supabaseClient.From<GroupMemberDto>()
-                        .Where(n => n.GroupId == groupID)
+                        .Where(n => n.GroupId == groupID &&n.Deleted==false)
                         .Get();
                     var membersArray = getMembers.Models.ToArray();
                     return Ok(membersArray);
@@ -750,8 +746,8 @@ namespace LiveChat.Controllers
         [HttpGet("GetGroupInfo")]
         public async Task<IActionResult> GetGroupInfo(long groupID)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emilClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emilClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -760,8 +756,7 @@ namespace LiveChat.Controllers
             {
 
                 var getSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
-
+                    .Where(n => n.Email == emilClaim.ToString() && n.Deleted == false).Get();
                 var sender = getSender.Models.FirstOrDefault();
 
 
@@ -773,7 +768,7 @@ namespace LiveChat.Controllers
                 try
                 {
                     var checkGroupid = await _supabaseClient.From<GroupDto>()
-                        .Where(n => n.GroupId == groupID)
+                        .Where(n => n.GroupId == groupID && n.Deleted == false)
                         .Get();
                     var vertifyingGroupid = checkGroupid.Models.First();
                     if (vertifyingGroupid == null)
@@ -783,7 +778,7 @@ namespace LiveChat.Controllers
                     // I have the conversation Id
 
                     var getGroupInfo = await _supabaseClient.From<GroupDto>()
-                        .Where(n => n.GroupId == groupID)
+                        .Where(n => n.GroupId == groupID &&n.Deleted==false)
                         .Get();
                     var groupInfo = getGroupInfo.Models.First();
 
@@ -803,8 +798,8 @@ namespace LiveChat.Controllers
         [HttpPost("SetGroupAdmin")]
         public async Task<IActionResult> SetGroupAdmin(long groupId, List<long> Admins)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emilClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emilClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -813,8 +808,7 @@ namespace LiveChat.Controllers
             {
 
                 var getSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
-
+                    .Where(n => n.Email == emilClaim.ToString() && n.Deleted == false).Get();
                 var sender = getSender.Models.FirstOrDefault();
 
 
@@ -828,7 +822,7 @@ namespace LiveChat.Controllers
 
 
                     var checkGroupid = await _supabaseClient.From<GroupDto>()
-                        .Where(n => n.GroupId == groupId)
+                        .Where(n => n.GroupId == groupId&& n.Deleted==false )
                         .Get();
                     var vertifyingGroupid = checkGroupid.Models.First();
                     if (vertifyingGroupid == null && vertifyingGroupid.CreatorId != sender.Id)
@@ -837,7 +831,7 @@ namespace LiveChat.Controllers
                     }
 
                     var addAdminMembers = await _supabaseClient.From<GroupMemberDto>()
-                        .Where(n => Admins.Contains(n.UserId))
+                        .Where(n => Admins.Contains(n.UserId) && n.Deleted==false)
                         .Set(n => n.Role, "Admin")
                         .Update();
                     var addedAdminNumbers = addAdminMembers.Models.Count;
@@ -863,8 +857,8 @@ namespace LiveChat.Controllers
         [HttpPut("UpdateGroupSettings")]
         public async Task<IActionResult> UpdateGroupSettings( UpdateGroupSettingModel updateGroupSetting)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emilClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emilClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -873,8 +867,7 @@ namespace LiveChat.Controllers
             {
 
                 var getSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
-
+                    .Where(n => n.Email == emilClaim.ToString() && n.Deleted == false).Get();
                 var sender = getSender.Models.FirstOrDefault();
 
 
@@ -887,7 +880,7 @@ namespace LiveChat.Controllers
                 {
                     // checking if the user is admin
                     var checkGroupid = await _supabaseClient.From<GroupMemberDto>()
-                        .Where(n => n.GroupId == updateGroupSetting.GroupId && n.UserId == sender.Id)
+                        .Where(n => n.GroupId == updateGroupSetting.GroupId && n.UserId == sender.Id && n.Deleted==false)
                         .Get();
                     var vertifyingGroupid = checkGroupid.Models.First();
                     if (vertifyingGroupid == null || vertifyingGroupid.Role != "Admin")
@@ -898,9 +891,9 @@ namespace LiveChat.Controllers
                     if (updateGroupSetting.Name!="")
                     {
                         var updateName = await _supabaseClient.From<GroupDto>()
-                            .Where(n => n.GroupId == updateGroupSetting.GroupId)
+                            .Where(n => n.GroupId == updateGroupSetting.GroupId&&n.Deleted==false)
                             .Set(n => n.Name, updateGroupSetting.Name)
-                            .Get();
+                            .Update();
 
                         var updatedName = updateName.Models.First();
                         if (updatedName == null)
@@ -913,9 +906,9 @@ namespace LiveChat.Controllers
                     if (updateGroupSetting.Description!= "")
                     {
                         var updateDesc = await _supabaseClient.From<GroupDto>()
-                            .Where(n => n.GroupId == updateGroupSetting.GroupId)
+                            .Where(n => n.GroupId == updateGroupSetting.GroupId && n.Deleted == false)
                             .Set(n => n.Description, updateGroupSetting.Description)
-                            .Get();
+                            .Update();
 
                         var updatedDesc = updateDesc.Models.First();
                         if (updatedDesc == null)
@@ -941,8 +934,8 @@ namespace LiveChat.Controllers
         [HttpDelete("DeleteGroup")]
         public async Task<IActionResult> DeleteGroup(long groupID)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emilClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emilClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
@@ -951,8 +944,7 @@ namespace LiveChat.Controllers
             {
 
                 var getSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
-
+                    .Where(n => n.Email == emilClaim.ToString()&&n.Deleted==false).Get();
                 var sender = getSender.Models.FirstOrDefault();
 
 
@@ -965,7 +957,7 @@ namespace LiveChat.Controllers
                 {
                     // checking if the user is admin
                     var checkGroupid = await _supabaseClient.From<GroupMemberDto>()
-                        .Where(n => n.GroupId == groupID && n.UserId == sender.Id)
+                        .Where(n => n.GroupId == groupID && n.UserId == sender.Id && n.Deleted==false)
                         .Get();
                     var vertifyingGroupid = checkGroupid.Models.First();
                     if (vertifyingGroupid == null || vertifyingGroupid.Role != "Admin")
@@ -974,7 +966,7 @@ namespace LiveChat.Controllers
                     }
                     // getting the GroupConversation Id
                     var getGroupConv = await _supabaseClient.From<GroupDto>()
-                        .Where(n => n.GroupId == groupID)
+                        .Where(n => n.GroupId == groupID&&n.Deleted==false)
                         .Get();
                     var groupInfo = getGroupConv.Models.First();
                     if (groupInfo.GroupId != groupID)
@@ -989,17 +981,20 @@ namespace LiveChat.Controllers
                         .Delete();
                     // then Let's delete every message related to the group from the GroupMessage table
                     await _supabaseClient.From<GroupMessageDto>()
-                        .Where(n => n.RecGroupId == groupInfo.GroupId)
-                        .Delete();
+                        .Where(n => n.RecGroupId == groupInfo.GroupId && n.Deleted == false)
+                        .Set(u => u.Deleted, true)
+                        .Update();
                     // then remove all members from the Members table
                     await _supabaseClient.From<GroupMemberDto>()
-                        .Where(n => n.GroupId == groupInfo.GroupId)
-                        .Delete();
+                        .Where(n => n.GroupId == groupInfo.GroupId && n.Deleted == false)
+                        .Set(u => u.Deleted, true)
+                        .Update();
 
                     // finally Delete the group from the Group table
                     await _supabaseClient.From<GroupDto>()
-                        .Where(n => n.GroupId == groupInfo.GroupId)
-                        .Delete();
+                        .Where(n => n.GroupId == groupInfo.GroupId && n.Deleted == false)
+                        .Set(u => u.Deleted, true)
+                        .Update();
 
                     return Ok("Successfully Deleted everything about Group");
                 }

@@ -15,6 +15,7 @@ public class GroupMemberDto : BaseModel
     [ForeignKey("GroupId")] public long GroupId { get; set; } 
 
     [Column("Role")] public string Role { get; set; } = "";
+    [Column("Deleted")] public bool? Deleted { get; set; }
 
     [ForeignKey("UserId")] public long UserId { get; set; }
 
