@@ -15,6 +15,8 @@ public class GroupMessageDto : BaseModel
 
     [Column("Type")] public string Type { get; set; } = "";
 
+    [Column("Deleted")] public bool? Deleted { get; set; }
+
     [ForeignKey("RecGroupId")] public long RecGroupId { get; set; }
 
     [ForeignKey("MemberSenderId")] public long MemberSenderId { get; set; }

@@ -35,21 +35,22 @@ namespace LiveChat.Controllers
         [HttpGet("GetNotification"), Authorize]
         public async Task<IActionResult> GetNotification()
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
 
             try
             {
-                var UserToken = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var GetSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
 
 
                 try
                 {
-                    var gotUser = UserToken.Models.FirstOrDefault();
+                    var gotUser = GetSender.Models.FirstOrDefault();
 
 
                     if (gotUser == null)
@@ -85,21 +86,22 @@ namespace LiveChat.Controllers
         [HttpPut("UpdateNotification"), Authorize]
         public async Task<IActionResult> UpdateNotification(bool value)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
 
             try
             {
-                var UserToken = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var GetSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
 
 
                 try
                 {
-                    var gotUser = UserToken.Models.FirstOrDefault();
+                    var gotUser = GetSender.Models.FirstOrDefault();
 
 
                     if (gotUser == null)
@@ -136,21 +138,22 @@ namespace LiveChat.Controllers
         [HttpGet("GetPresence"), Authorize]
         public async Task<IActionResult> GetPresence()
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
 
             try
             {
-                var UserToken = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var GetSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
 
 
                 try
                 {
-                    var gotUser = UserToken.Models.FirstOrDefault();
+                    var gotUser = GetSender.Models.FirstOrDefault();
 
 
                     if (gotUser == null)
@@ -192,21 +195,22 @@ namespace LiveChat.Controllers
         [HttpPut("UpdateApperance"), Authorize]
         public async Task<IActionResult> UpdatePresence(ApperanceUser apperanceUser)
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
 
             try
             {
-                var UserToken = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var GetSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
 
 
                 try
                 {
-                    var gotUser = UserToken.Models.FirstOrDefault();
+                    var gotUser = GetSender.Models.FirstOrDefault();
 
 
                     if (gotUser == null)
@@ -247,21 +251,22 @@ namespace LiveChat.Controllers
         [HttpGet("GetApperance"), Authorize]
         public async Task<IActionResult> GetApperance()
         {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
-            if (phoneNumberClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
                 return BadRequest("Invalid Token");
             }
 
             try
             {
-                var UserToken = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.PhoneNo == phoneNumberClaim.ToString()).Get();
+
+                var GetSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
 
 
                 try
                 {
-                    var gotUser = UserToken.Models.FirstOrDefault();
+                    var gotUser = GetSender.Models.FirstOrDefault();
 
 
                     if (gotUser == null)
