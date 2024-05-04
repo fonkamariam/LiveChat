@@ -14,10 +14,8 @@ namespace LiveChat.Models
 
         [Column("created_at")] public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
-        [Required]
         [Column("Email")] public string? Email { get; set; }
 
-        [Required]
         [Column("PasswordHash")] public byte[]? PasswordHash { get; set; } 
 
         [Column("PasswordSalt")] public byte[]? PasswordSalt { get; set; }

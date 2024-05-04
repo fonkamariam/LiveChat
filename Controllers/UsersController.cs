@@ -121,7 +121,7 @@ namespace LiveChat.Controllers
             };
             return refreshToken;
         }
-
+        
         [HttpPost("refreshToken/{id}")]
         public async Task<IActionResult> RefreshTokenAsync([FromBody] Refresh_Token refreshToken, long id)
         {
@@ -168,46 +168,39 @@ namespace LiveChat.Controllers
 
 
         [HttpPost("login")]
-        public async Task<IActionResult> Loginn(User person)
+        public async Task<IActionResult> Loginn([FromBody] UserLogin person)
         {
             try
             {
                 var response = await _supabaseClient.From<Userdto>()
                     .Where(n => n.Email == person.Email && n.Deleted == false).Get();
 
-                try
-                {
                     var hey = response.Models.FirstOrDefault();
 
                     if (hey == null)
                     {
-                        return BadRequest("Phone Number Invalid");
+                        return StatusCode(10,"Phone Number Invalid");
                     }
 
                     if (!VertifyPasswordHash(person.Password, hey.PasswordHash, hey.PasswordSalt))
                     {
-                        return BadRequest("Wrong Password");
+                        return StatusCode(20,"Wrong Password");
                     }
 
                     string token = CreateToken(hey.Email);
                     var refreshToken = GenerateRefreshToken();
-                    try
-                    {
+                   
 
-                        var responseUpdate = await _supabaseClient.From<Userdto>()
+                    var responseUpdate = await _supabaseClient.From<Userdto>()
                             .Where(n => n.Email == person.Email)
-                            .Set(u => u.Refresh_Token, refreshToken.Token)
-                            .Set(u => u.Token_Created, refreshToken.Created)
-                            .Set(u => u.Token_Expiry, refreshToken.Expires)
-                            .Update();
-                    }
-                    catch (Exception)
-                    {
-                        return BadRequest("No Connection for updating the refresh token");
-                    }
+                            .Single();
+                    responseUpdate.Refresh_Token = refreshToken.Token;
+                    responseUpdate.Token_Created = refreshToken.Created;
+                    responseUpdate.Token_Expiry = refreshToken.Expires;
+                    await responseUpdate.Update<Userdto>();
 
 
-                    var result = new
+                var result = new
                     {
                         Id = hey.Id,
                         Token = token,
@@ -215,274 +208,212 @@ namespace LiveChat.Controllers
                     };
 
                     return Ok(result);
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
+               
             }
             catch (Exception)
             {
-                return BadRequest("No Connection, Please Try again");
+                return StatusCode(30,"No Connection, Please Try again");
             }
         }
 
         // Post 
-        [HttpPost("register")]
-        public async Task<IActionResult> CreateUserAsync([FromBody] User person)
+        [HttpPost("registerOne")]
+        public async Task<IActionResult> RegisterPartOne([FromBody] string emailPara)
         {
             // First Let's check if the Email is Available in the database
             try
             {
                 var response = await _supabaseClient.From<Userdto>()
-                    .Where(a => a.Email == person.Email && a.Deleted == false)
+                    .Where(a => a.Email == emailPara && a.Deleted == false)
                     .Get();
-
                 var hey = response.Models.Count;
                 if (hey == 1)
                 {
-                    return BadRequest("Email Invalid,Email already in use");
+                    return StatusCode(10,"Email Invalid,Email already in use");
                 }
-                // if Verification Number is null ---Two Decisions to be made
-                // Generate and send Verification No , Update The Verification Table 
-                // ELSE Verify the number and register the user
+               
+                Random random = new Random(); 
+                int code = random.Next(10000, 100000);
 
-
-                if (person.VertificationNo == null)
+                // send email 
+                bool x = SendEmail(emailPara, code);
+                if (x == false)
                 {
-                    Random random = new Random();
-                    int code = random.Next(10000, 100000);
-
-                    // send email 
-                    bool x = SendEmail(person.Email, code);
-                    if (x == false)
-                    {
-                        return BadRequest("Couldn't Send email,Try again");
-                    }
-
-                    // Checking if User is sending another verification request on another without using the first one
-                    // if that's the case, we just update the verification no and the expiry time
-                    var responseReg = await _supabaseClient.From<RegisterVertifyDto>()
-                        .Where(a => a.Email == person.Email)
-                        .Set(u=>u.VertficationNo,code)
-                        .Set(u=>u.VReg_Expiry, DateTime.UtcNow.AddMinutes(10))
-                        .Update();
-                    var heyRegCount = responseReg.Models.Count;
-                    
-                    if (heyRegCount == 1)
-                    {
-                        return Ok("Verification Sent");
-
-                    }
-                    // if not Insert a new row in the verification table
-                    try
-                    {
-                        RegisterVertifyDto registerVertify = new RegisterVertifyDto
+                    Console.WriteLine("Invaild Email");
+                    return StatusCode(20,"Couldn't Send email,Try again");
+                }
+                RegisterVertifyDto registerVertify = new RegisterVertifyDto
                         {
-                            Email = person.Email,
+                            Email = emailPara,
                             VertficationNo = code,
-                            VReg_Expiry = DateTime.UtcNow.AddMinutes(10)
+                            VReg_Expiry = DateTime.UtcNow.AddMinutes(30) 
                         };
-                        var responseUpdate = await _supabaseClient.From<RegisterVertifyDto>().Insert(registerVertify);
-
-                        return Ok("Verification Sent");
-                    }
-                    catch (Exception)
-                    {
-                        return BadRequest("No Connection for updating the Verification part 1 process");
-                    }
-
-                }
-                // if Verification Number not null
-
-                try
+                var responseReg = await _supabaseClient.From<RegisterVertifyDto>()
+                    .Where(a => a.Email == emailPara)
+                    .Get();
+                var rg = responseReg.Models.Count();
+                Console.WriteLine(rg);
+                if (rg == 1)
                 {
-                    var verifyNo = await _supabaseClient.From<RegisterVertifyDto>()
-                        .Where(n => n.Email == person.Email && n.VertficationNo == person.VertificationNo)
-                        .Get();
-                    if (verifyNo.Models.Count == 0)
-                    {
-                        return BadRequest("Incorrect Verification Number");
-                    }
+                    var sin = await _supabaseClient.From<RegisterVertifyDto>()
+                        .Where(a => a.Email == emailPara)
+                        .Single();
+                    sin.VertficationNo = code;
+                    sin.VReg_Expiry=DateTime.UtcNow.AddMinutes(30);
+                    await sin.Update<RegisterVertifyDto>();
+                    
+                    return Ok("Updated");
 
-                    var checkVerify = verifyNo.Models.First();
-                    if (checkVerify.VReg_Expiry > DateTime.UtcNow)
-                    {
-                        return BadRequest("Verification Number Expired");
-                    }
-                    // Register the User now 
-
-                    CreatePasswordHash(person.Password, out byte[] passwordHash, out byte[] passwordSalt);
-
-                    var refreshToken = GenerateRefreshToken();
-                    var userdto = new Userdto
-                    {
-                        Email = person.Email,
-                        PasswordHash = passwordHash,
-                        PasswordSalt = passwordSalt,
-                        Refresh_Token = refreshToken.Token,
-                        Token_Expiry = refreshToken.Expires,
-                        Token_Created = refreshToken.Created
-
-                    };
-
-                    try
-                    {
-                        var response12 = await _supabaseClient.From<Userdto>().Insert(userdto);
-                        try
-                        {
-                            var hey12 = response12.Models.First();
-
-                            string token = CreateToken(hey12.Email);
-                            var result = new
-                            {
-                                hey12.Id,
-                                Token = token,
-                                RefreshToken = hey12.Refresh_Token
-                            };
-                            await _supabaseClient.From<RegisterVertifyDto>()
-                                .Where(a => a.Email == person.Email)
-                                .Delete();
-                            return Ok(result);
-                        }
-                        catch (Exception)
-                        {
-                            return BadRequest("Invalid Email");
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        return BadRequest("Can't connect to server");
-                    }
                 }
-                catch (Exception)
-                {
-                    return BadRequest("Can't connect to server");
-                }
+
+                    
+                var responseUpdate = await _supabaseClient.From<RegisterVertifyDto>().Insert(registerVertify);
+                
+                return Ok("Sent");
 
             }
             catch (Exception)
             {
-                return BadRequest("Connection Problem");
+                return StatusCode(50, "Connection Problem");
             }
         }
 
+        [HttpPost("registerTwo")]
+        public async Task<IActionResult> RegisterPartTwo([FromBody] User person)
+        { 
+            try
+            {
+                var verifyNo = await _supabaseClient.From<RegisterVertifyDto>()
+                    .Where(n => n.Email == person.Email && n.VertficationNo == person.VertificationNo)
+                    .Get();
+                if (verifyNo.Models.Count == 0)
+                {
+                    return StatusCode(10,"Incorrect Verification Number");
+                }
+
+                var checkVerify = verifyNo.Models.First();
+                if (checkVerify.VReg_Expiry < DateTime.UtcNow)
+                {
+                    
+                    return StatusCode(20,"Verification Number Expired,Try again");
+                }
+                
+                // Register the User now 
+
+                CreatePasswordHash(person.Password, out byte[] passwordHash, out byte[] passwordSalt);
+                
+                var refreshToken = GenerateRefreshToken();
+                var userdto = new Userdto   
+                {
+                    Email = person.Email,
+                    PasswordHash = passwordHash,
+                    PasswordSalt = passwordSalt,
+                    Refresh_Token = refreshToken.Token,
+                    Token_Expiry = refreshToken.Expires,
+                    Token_Created = refreshToken.Created
+                };
+                
+                var final=await _supabaseClient.From<Userdto>().Insert(userdto);
+                
+                var final1 = final.Models.First();
+
+                string token = CreateToken(userdto.Email); 
+                var result = new
+                        {
+                            Id=final1.Id,
+                            Token = token,
+                            RefreshToken = final1.Refresh_Token
+                        };
+                await _supabaseClient.From<RegisterVertifyDto>()
+                    .Where(a => a.Email == person.Email)
+                    .Delete();
+                
+                return Ok(result);
+                
+            }
+            catch (Exception)
+            {
+                return StatusCode(30,"Can't connect to server");
+            }
+        }
 
         [HttpPost("ForgotPassword")]
-        public async Task<IActionResult> ForgotPassword(Email email)
+        public async Task<IActionResult> ForgotPassword([FromBody]string email)
         {
 
             try
             {
-                var response = await _supabaseClient.From<Userdto>().Where(n => n.Email == email.EmailGet).Get();
+                var response = await _supabaseClient.From<Userdto>().Where(n => n.Email == email).Get();
 
-                try
+                if (response.Models.Count == 0)
                 {
-                    var hey = response.Models.FirstOrDefault();
-
-                    if (hey == null)
-                    {
-                        return BadRequest("Email Invalid");
-                    }
-
-                    //Generate 5 code number
-                    Random random = new Random();
-                    int code = random.Next(10000, 100000);
-                    // send email 
-                    try
-                    {
-                        var CheckEmail = await _supabaseClient.From<Userdto>()
-                            .Where(n => n.Email == email.EmailGet).Get();
-                    }
-                    catch (Exception)
-                    {
-                        return BadRequest("Invaild Email Address");
-                    }
-
-                    bool x = SendEmail(email.EmailGet, code);
-                    if (x == false)
-                    {
-                        return BadRequest("Couldn't Send email,Try again");
-                    }
-
-                    // update vertification Database
-                    try
-                    {
-
-                        var responseUpdate = await _supabaseClient.From<Userdto>()
-                            .Where(n => n.Email == email.EmailGet)
-                            .Set(u => u.V_Number_Value, code)
-                            .Set(u => u.V_Number_Created_At, DateTime.UtcNow)
-                            .Set(u => u.V_Number_Expiry, DateTime.Now.AddMinutes(10))
-                            .Update();
-
-                        return Ok("Vertification Sent");
-                    }
-                    catch (Exception)
-                    {
-                        return BadRequest("No Connection for updating the Vertification process");
-                    }
+                    return StatusCode(10, "Invalid Email, No Email found");
                 }
-                catch (Exception)
+
+
+                //Generate 5 code number
+                Random random = new Random(); 
+                int code = random.Next(10000, 100000);
+                    // send email
+                    
+                bool x = SendEmail(email, code);
+                if (x == false)
                 {
-                    return BadRequest("Problem when querying the database");
+                    return StatusCode(20,"Couldn't Send email,Try again");
                 }
+
+                // update vertification Database
+                var responseUpdate = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email)
+                    .Single();
+                responseUpdate.V_Number_Value = code; 
+                responseUpdate.V_Number_Created_At = DateTime.UtcNow;
+                responseUpdate.V_Number_Expiry = DateTime.UtcNow.AddMinutes(10);
+                await responseUpdate.Update<Userdto>();
+                
+                return Ok("Vertification Sent");
+                
             }
             catch (Exception)
             {
-                return BadRequest("No Connection, Please Try again");
+                return StatusCode(30,"No Connection, Please Try again");
             }
         }
 
         [HttpPost("UpdatePasswordThroughCode")]
-        public async Task<IActionResult> UpdatePasswordThroughCode(NewPassword newPassword)
+        public async Task<IActionResult> UpdatePasswordThroughCode( [FromBody] NewPassword newPassword)
         {
-
             try
             {
                 var response = await _supabaseClient.From<Userdto>().Where(n => n.Email == newPassword.Email).Get();
 
-                try
+                if (response.Models.Count == 0)
                 {
-                    var hey = response.Models.FirstOrDefault();
+                    return StatusCode(10, "Invalid Email, No Email found");
+                }
 
-                    if (hey == null)
-                    {
-                        return BadRequest("Email Invalid");
-                    }
-
-                    // update Vertification Database
-                    if (hey.V_Number_Value != 0 && hey.V_Number_Expiry > DateTime.UtcNow)
+                var hey = response.Models.First();
+                // update Vertification Database
+                if (hey.V_Number_Value == newPassword.V_code && hey.V_Number_Expiry > DateTime.UtcNow)
                     {
                         CreatePasswordHash(newPassword.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
-                        try
-                        {
-
-                            var responseUpdate = await _supabaseClient.From<Userdto>()
-                                .Where(n => n.Email == newPassword.Email)
-                                .Set(u => u.PasswordHash, passwordHash)
-                                .Set(u => u.PasswordSalt, passwordSalt)
-                                .Set(u => u.V_Number_Expiry, DateTime.UtcNow)
-                                .Set(u => u.V_Number_Value, 0)
-                                .Set(u => u.V_Number_Created_At, DateTime.UtcNow)
-                                .Update();
-
-                            return Ok("Succssefully Updated!");
-                        }
-                        catch (Exception)
-                        {
-                            return BadRequest("No Connection for updating the Password process");
-                        }
+                    var responseUpdate = await _supabaseClient.From<Userdto>()
+                        .Where(n => n.Email == newPassword.Email)
+                        .Single();
+                    responseUpdate.PasswordHash = passwordHash;
+                    responseUpdate.PasswordSalt = passwordSalt;
+                    responseUpdate.V_Number_Expiry =DateTime.UtcNow;
+                    responseUpdate.V_Number_Value = 0;
+                    responseUpdate.V_Number_Created_At = DateTime.UtcNow;
+                    await responseUpdate.Update<Userdto>();
+                    return Ok("Succssefully Updated!");
+                        
                     }
 
-                    return BadRequest("Invalid , either code exipred or lying!");
+                return StatusCode(20,"Invalid , either code exipred or lying!");
 
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
+               
             }
             catch (Exception)
             {
