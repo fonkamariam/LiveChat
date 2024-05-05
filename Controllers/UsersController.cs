@@ -92,7 +92,7 @@ namespace LiveChat.Controllers
                 .Build();
             var claims = new[]
             {
-                new Claim("Email", emailPara)
+                new Claim("Email",emailPara)
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretsConfig["AppSettings:Token"]));

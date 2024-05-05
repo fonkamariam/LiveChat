@@ -29,56 +29,52 @@ namespace LiveChat.Controllers
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
             {
-                return BadRequest("Invalid Token");
+                return StatusCode(15,"Invalid Token");
             }
-
+            var email = emailClaim.Value.Split(':')[0].Trim();
             try
             {
+                Console.WriteLine("0");
                 var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false)
+                    .Where(n => n.Email == email && n.Deleted == false)
                     .Get();
 
-                try
-                {
+               
                     var hey = response.Models.FirstOrDefault();
 
                     if (hey == null)
                     {
-                        return BadRequest("Invalid Token");
+                        return StatusCode(10,"Invalid Token");
                     }
+                    Console.WriteLine("1");
 
-                    try 
-                    {
-                        var responseUpdate = await _supabaseClient.From<UserProfiledto>()
+
+                var responseUpdate = await _supabaseClient.From<UserProfiledto>()
                             .Where(n => n.UserId == hey.Id && n.Deleted == false)
                             .Single();
+                Console.WriteLine("2");
 
-                        UserProfileCustom userProfileCustom = new UserProfileCustom
+                UserProfileCustom userProfileCustom = new UserProfileCustom
                         {
                             Name = responseUpdate.Name,
                             LastName = responseUpdate.LastName,
-                            UserName = responseUpdate.UserName,
-                            Avatar = responseUpdate.Avatar,
                             Bio = responseUpdate.Bio
                         };
+                Console.WriteLine("3");
+                Console.WriteLine(userProfileCustom.Name);
+                Console.WriteLine(userProfileCustom.Bio);
+                Console.WriteLine(userProfileCustom.LastName);
 
-                        return Ok(userProfileCustom);
-                    }
-                    catch (Exception)
-                    {
-                        return BadRequest("No Connection for Getting Userprofile");
-                    }
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
+
+                return Ok(userProfileCustom);
+                    
             }
             catch (Exception)
             {
-                return BadRequest("No Connection, Please Try again");
+                return StatusCode(30,"No Connection, Please Try again");
             }
         }
+        
         [HttpGet("GetUserProfile/{id}"), Authorize]
         public async Task<IActionResult> GetUserProfile(long id)
         {
@@ -118,8 +114,6 @@ namespace LiveChat.Controllers
                         {
                             Name = responseUpdate.Name,
                             LastName = responseUpdate.LastName,
-                            UserName = responseUpdate.UserName,
-                            Avatar = responseUpdate.Avatar,
                             Bio = responseUpdate.Bio
                         };
 
@@ -147,35 +141,58 @@ namespace LiveChat.Controllers
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
             {
-                return BadRequest("Invalid Token");
+                return StatusCode(15,"Invalid Token");
             }
+            Console.WriteLine(emailClaim);
+
+            var email = emailClaim.Value.Split(':')[0].Trim();
+            Console.WriteLine(email);
 
             try
             {
+                Console.WriteLine("1");
                 var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailClaim.ToString()&& n.Deleted==false).Get();
+                    .Where(n => n.Email == email && n.Deleted==false).Get();
+                Console.WriteLine("2");
 
-                try
-                {
-                    var hey = response.Models.FirstOrDefault();
 
-                    if (hey == null)
+                var hey = response.Models.FirstOrDefault();
+                Console.WriteLine("3");
+
+                if (hey == null)
                     {
-                        return BadRequest("Invalid Token");
+                        return StatusCode(10,"Internal Server Error");
                     }
+                Console.WriteLine("4");
 
-                    var response1 = await _supabaseClient
+                var response1 = await _supabaseClient
                         .From<UserProfiledto>()
                         .Where(n => n.UserId == hey.Id && n.Deleted==false)
                         .Single();
 
-                    // Check if the user profile exists
+                    // Create a User Profile
                     if (response1 == null)
                     {
-                        return NotFound("User profile not found");
-                    }
+                        Console.WriteLine("5");
 
-                    UserProfiledto userProfiledto = response1 as UserProfiledto;
+                    UserProfiledto userProfiletoInsert = new UserProfiledto
+                        {
+                            UserId = hey.Id,
+                            Name = userProfileCustom.Name,
+                            Bio = userProfileCustom.Bio,
+                            LastName= userProfileCustom.LastName
+                        };
+
+                    await _supabaseClient.From<UserProfiledto>().Insert(userProfiletoInsert);
+
+
+
+
+                    return Ok ("User profile Created");
+                    }
+                    Console.WriteLine("6");
+
+                UserProfiledto userProfiledto = response1 as UserProfiledto;
 
                     if (!string.IsNullOrEmpty(userProfileCustom.Name))
                     {
@@ -189,39 +206,27 @@ namespace LiveChat.Controllers
                     {
                         userProfiledto.Bio = userProfileCustom.Bio;
                     }
-                    if (!string.IsNullOrEmpty(userProfileCustom.UserName))
-                    {
-                        userProfiledto.Bio = userProfileCustom.UserName;
-                    }
-                    if (!string.IsNullOrEmpty(userProfileCustom.Avatar))
-                    {
-                        userProfiledto.Bio = userProfileCustom.Avatar;
-                    }
-                    // update Profile
-                    try
-                    {
+                Console.WriteLine("7");
 
-                        var response2 = await _supabaseClient
+                // update Profile
+                var response2 = await _supabaseClient
                             .From<UserProfiledto>()
                             .Where(n => n.UserId == hey.Id && n.Deleted==false)
-                            .Update(userProfiledto);
-                        
+                            .Single();
+                        response2.Name = userProfiledto.Name;
+                        response2.LastName=userProfiledto.LastName;
+                        response2.Bio = userProfiledto.Bio;
 
-                        return Ok("Updated UserProfile");
-                    }
-                    catch (Exception)
-                    {
-                        return BadRequest("No Connection for updating Userprofile");
-                    }
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
+                        await response2.Update<UserProfiledto>();
+                        Console.WriteLine("8");
+
+
+                return Ok("Updated UserProfile");
+                   
             }
             catch (Exception)
             {
-                return BadRequest("No Connection, Please Try again");
+                return StatusCode(30,"No Connection, Please Try again");
             }
         }
     }

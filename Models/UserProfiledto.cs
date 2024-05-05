@@ -15,7 +15,7 @@ public class UserProfiledto:BaseModel
 
     [Required] [Column("Name")] public string? Name { get; set; } = null;
 
-    [Required] [Column("UserName")] public string? UserName { get; set; } = null;
+    [Column("UserName")] public string? UserName { get; set; } = null;
 
     [Column("Avatar")] public string? Avatar { get; set; }
 
