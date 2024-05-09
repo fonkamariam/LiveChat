@@ -116,47 +116,52 @@ namespace LiveChat.Controllers
             var refreshToken = new Refresh_Token
             {
                 Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
-                Expires = DateTime.Now.AddDays(1),
+                Expires = DateTime.Now.AddHours(3),
                 Created = DateTime.UtcNow
             };
             return refreshToken;
         }
         
-        [HttpPost("refreshToken/{id}")]
-        public async Task<IActionResult> RefreshTokenAsync([FromBody] Refresh_Token refreshToken, long id)
+        [HttpPost("refreshToken")]
+        public async Task<IActionResult> RefreshTokenAsync([FromBody] UserRefreshToken refreshToken)
         {
-            // validating Refresh token with the id
+            
             try
             {
-                var response = await _supabaseClient.From<Userdto>().Where(n => n.Id == id).Get();
+                var response = await _supabaseClient.From<Userdto>()
+                   .Where(n => n.Id == refreshToken.Id && n.Deleted == false)
+                   .Get();
 
-                try
+
+                var hey = response.Models.FirstOrDefault();
+
+                if (hey == null)
                 {
-                    var hey = response.Models.FirstOrDefault();
-
-                    if (hey == null)
-                    {
-                        return BadRequest("Invalid Id");
-                    }
-
-                    if (hey.Refresh_Token != refreshToken.Token)
-                    {
-                        return Unauthorized("Invalid Refresh Token");
-                    }
-                    else if (hey.Token_Expiry < DateTime.UtcNow)
-                    {
-                        return Unauthorized("your Refresh token has expired, sign in again");
-                    }
-
-                    string newToken = CreateToken(hey.Email);
-
-                    return Ok(newToken);
-
+                    return StatusCode(10, "Invalid Id");
                 }
-                catch (Exception)
+
+
+                if (hey.Refresh_Token != refreshToken.Token)
                 {
-                    return BadRequest("Invalid ID");
+                    return StatusCode(20,"Invalid Refresh Token");
                 }
+                if (hey.Token_Expiry < DateTime.UtcNow)
+                {
+                    return StatusCode(30,"your Refresh token has expired, sign in again");
+                }
+
+                string newToken = CreateToken(hey.Email);
+
+                var result = new
+                {
+                    Token = newToken
+                };
+
+
+                return Ok(result);
+                
+
+                
             }
             catch (Exception)
             {
@@ -179,35 +184,40 @@ namespace LiveChat.Controllers
 
                     if (hey == null)
                     {
-                        return StatusCode(10,"Phone Number Invalid");
+                        return StatusCode(10,"Email Invalid");
                     }
+                
 
-                    if (!VertifyPasswordHash(person.Password, hey.PasswordHash, hey.PasswordSalt))
+                if (!VertifyPasswordHash(person.Password, hey.PasswordHash, hey.PasswordSalt))
                     {
                         return StatusCode(20,"Wrong Password");
                     }
 
                     string token = CreateToken(hey.Email);
                     var refreshToken = GenerateRefreshToken();
-                   
-
-                    var responseUpdate = await _supabaseClient.From<Userdto>()
+                
+                var responseUpdate = await _supabaseClient.From<Userdto>()
                             .Where(n => n.Email == person.Email)
                             .Single();
                     responseUpdate.Refresh_Token = refreshToken.Token;
                     responseUpdate.Token_Created = refreshToken.Created;
-                    responseUpdate.Token_Expiry = refreshToken.Expires;
-                    await responseUpdate.Update<Userdto>();
+                
+                responseUpdate.Token_Expiry = refreshToken.Expires;
+                
+                await responseUpdate.Update<Userdto>();
 
 
                 var result = new
                     {
                         Id = hey.Id,
                         Token = token,
-                        Refresh_Token = refreshToken
-                    };
+                        RefreshToken = refreshToken.Token,
+                        RefreshTokenExpiry = refreshToken.Expires
 
-                    return Ok(result);
+                };
+                
+
+                return Ok(result);
                
             }
             catch (Exception)
@@ -299,7 +309,7 @@ namespace LiveChat.Controllers
                 }
                 
                 // Register the User now 
-
+                
                 CreatePasswordHash(person.Password, out byte[] passwordHash, out byte[] passwordSalt);
                 
                 var refreshToken = GenerateRefreshToken();
@@ -313,7 +323,9 @@ namespace LiveChat.Controllers
                     Token_Created = refreshToken.Created
                 };
                 
-                var final=await _supabaseClient.From<Userdto>().Insert(userdto);
+
+
+                var final =await _supabaseClient.From<Userdto>().Insert(userdto);
                 
                 var final1 = final.Models.First();
 
@@ -322,8 +334,10 @@ namespace LiveChat.Controllers
                         {
                             Id=final1.Id,
                             Token = token,
-                            RefreshToken = final1.Refresh_Token
-                        };
+                            RefreshToken = refreshToken.Token,
+                            RefreshTokenExpiry= refreshToken.Expires
+                };
+                
                 await _supabaseClient.From<RegisterVertifyDto>()
                     .Where(a => a.Email == person.Email)
                     .Delete();
@@ -423,57 +437,47 @@ namespace LiveChat.Controllers
 
         // Change Password after logged in
         [HttpPost("ChangePassword"), Authorize]
-        public async Task<IActionResult> ChangePassword(ChangePassword changePassword)
+        public async Task<IActionResult> ChangePassword( [FromBody] ChangePassword changePassword)
         {
-            var EmailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
-            if (EmailClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
-                return BadRequest("Invalid Token");
+                return StatusCode(15, "Invalid Token");
             }
-
+            var email = emailClaim.Value.Split(':')[0].Trim();
             try
             {
                 var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == EmailClaim.ToString() && n.Deleted==false)
+                    .Where(n => n.Email == email && n.Deleted == false)
                     .Get();
 
-                try
+
+                var hey = response.Models.FirstOrDefault();
+
+                if (hey == null)
                 {
-                    var hey = response.Models.FirstOrDefault();
-
-                    if (hey == null)
-                    {
-                        return BadRequest("Token Invalid");
-                    }
-
-                    // update Password
-                    try
-                    {
-                        if (EmailClaim.ToString() != changePassword.OldPassword)
-                        {
-                            return BadRequest("Old password Invalid");
-                        }
-
-                        CreatePasswordHash(changePassword.NewPassword, out byte[] passwordHash,
-                            out byte[] passwordSalt);
-
-
-                        var responseUpdate = await _supabaseClient.From<Userdto>()
-                            .Where(n => n.Email == EmailClaim.ToString())
-                            .Set(u => u.PasswordHash, passwordHash)
-                            .Set(u => u.PasswordSalt, passwordSalt)
-                            .Update();
-                        return Ok("Succssefully Updated Password!");
-                    }
-                    catch (Exception)
-                    {
-                        return BadRequest("No Connection for updating the Password process");
-                    }
+                    return StatusCode(10, "Invalid Token");
                 }
-                catch (Exception)
+                
+                if (!VertifyPasswordHash(changePassword.OldPassword, hey.PasswordHash, hey.PasswordSalt))
                 {
-                    return BadRequest("Problem when querying the database");
+                    
+                    return StatusCode(20, "Wrong Old Password");
                 }
+                
+                CreatePasswordHash(changePassword.NewPassword, out byte[] passwordHash,out byte[] passwordSalt);
+
+
+                var responseUpdate = await _supabaseClient.From<Userdto>()
+                 .Where(n => n.Email == email)
+                 .Single();
+                responseUpdate.PasswordHash = passwordHash;
+                responseUpdate.PasswordSalt = passwordSalt;
+ 
+                await responseUpdate.Update<Userdto>();
+                return Ok("Succssefully Updated Password!");
+
+
             }
             catch (Exception)
             {
@@ -482,7 +486,7 @@ namespace LiveChat.Controllers
         }
 
         [HttpPost("ChangeEmail"), Authorize]
-        public async Task<IActionResult> ChangePassword(ChangeEmail changeEmail)
+        public async Task<IActionResult> ChangePassword( [FromBody] ChangeEmail changeEmail)
         {
             var EmailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (EmailClaim == null)
@@ -530,64 +534,42 @@ namespace LiveChat.Controllers
             }
         }
 
-        [HttpPost("DeleteAccount"), Authorize]
+        [HttpDelete("DeleteAccount"), Authorize]
         public async Task<IActionResult> DeleteAccount()
         {
-            var EmailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
-            if (EmailClaim == null)
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
             {
-                return BadRequest("Invalid Token");
+                return StatusCode(15, "Invalid Token");
             }
-
+            var email = emailClaim.Value.Split(':')[0].Trim();
             try
             {
                 var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == EmailClaim.ToString() && n.Deleted == false)
+                    .Where(n => n.Email == email && n.Deleted == false)
                     .Get();
 
-                try
+
+                var hey = response.Models.FirstOrDefault();
+
+                if (hey == null)
                 {
-                    var hey = response.Models.FirstOrDefault();
-
-                    if (hey == null)
-                    {
-                        return BadRequest("Invalid User");
-                    }
-
-                    // update Password
-                    try
-                    {
-                        var responseUpdate = await _supabaseClient.From<Userdto>()
-                            .Where(n => n.Email == EmailClaim.ToString())
-                            .Set(u => u.Deleted, true)
-                            .Update();
-                        var deletedUser = responseUpdate.Models.First();
-
-                        if (deletedUser == null)
-                        {
-                            return BadRequest("Problem when deleting the user");
-                        }
-                        
-                        // Trigger
-                        //UserProfile Table gets deleted
-                        var userProfileTable = await _supabaseClient.From<UserProfiledto>()
-                            .Where(n => n.Id == deletedUser.Id)
-                            .Set(n=>n.Deleted,true)
-                            .Update();
-                        // Contact 
-
-
-                        return Ok("Succssefully Deleted Account!");
-                    }
-                    catch (Exception)
-                    {
-                        return BadRequest("No Connection for Deletion");
-                    }
+                    return StatusCode(10, "Invalid Token");
                 }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
+
+                var responseUpdate = await _supabaseClient.From<Userdto>()
+                 .Where(n => n.Email == email)
+                 .Single();
+                
+                responseUpdate.Email = responseUpdate.Email + "@" + responseUpdate.Id;
+                
+                responseUpdate.Deleted = true;
+
+                await responseUpdate.Update<Userdto>();
+
+                return Ok("Succssefully Deleted User!");
+
+
             }
             catch (Exception)
             {
@@ -635,7 +617,6 @@ namespace LiveChat.Controllers
             }
 
         }
-
         
     }
 }

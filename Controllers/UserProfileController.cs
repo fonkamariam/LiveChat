@@ -34,7 +34,6 @@ namespace LiveChat.Controllers
             var email = emailClaim.Value.Split(':')[0].Trim();
             try
             {
-                Console.WriteLine("0");
                 var response = await _supabaseClient.From<Userdto>()
                     .Where(n => n.Email == email && n.Deleted == false)
                     .Get();
@@ -46,25 +45,19 @@ namespace LiveChat.Controllers
                     {
                         return StatusCode(10,"Invalid Token");
                     }
-                    Console.WriteLine("1");
-
+                
 
                 var responseUpdate = await _supabaseClient.From<UserProfiledto>()
                             .Where(n => n.UserId == hey.Id && n.Deleted == false)
                             .Single();
-                Console.WriteLine("2");
-
+                
                 UserProfileCustom userProfileCustom = new UserProfileCustom
                         {
                             Name = responseUpdate.Name,
                             LastName = responseUpdate.LastName,
                             Bio = responseUpdate.Bio
                         };
-                Console.WriteLine("3");
-                Console.WriteLine(userProfileCustom.Name);
-                Console.WriteLine(userProfileCustom.Bio);
-                Console.WriteLine(userProfileCustom.LastName);
-
+               
 
                 return Ok(userProfileCustom);
                     
