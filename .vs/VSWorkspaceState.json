@@ -1,8 +1,7 @@
 {
   "ExpandedNodes": [
     "",
-    "\\Controllers",
-    "\\Models"
+    "\\Controllers"
   ],
   "SelectedNode": "\\Controllers\\MessageController.cs",
   "PreviewInSolutionExplorer": false
