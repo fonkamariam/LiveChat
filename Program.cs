@@ -128,12 +128,7 @@ else
 }
 
 
-app.UseCors(a =>
-{
-    a.AllowAnyOrigin()
-        .AllowAnyMethod()
-        .AllowAnyHeader();
-});
+app.UseCors("AllowReactApp"); // Use the CORS policy
 app.UseAuthentication();
 app.UseRouting();
 app.MapControllers();
