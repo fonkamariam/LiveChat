@@ -1,22 +1,19 @@
-# Use the official ASP.NET Core runtime image as a parent image
-FROM mcr.microsoft.com/dotnet/aspnet:6.0 AS base
-WORKDIR /app
-EXPOSE 80
-
-# Use the SDK image to build the app
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+# Use the .NET 8.0 SDK as the build environment
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build-env
 WORKDIR /src
+
+# Copy the csproj and restore any dependencies
 COPY ["LiveChat.csproj", "./"]
 RUN dotnet restore "./LiveChat.csproj"
+
+# Copy the remaining project files and build the project
 COPY . .
-WORKDIR "/src/."
-RUN dotnet build "LiveChat.csproj" -c Release -o /app/build
+RUN dotnet publish "./LiveChat.csproj" -c Release -o /app/publish
 
-FROM build AS publish
-RUN dotnet publish "LiveChat.csproj" -c Release -o /app/publish
-
-# Copy the build result to the base image
-FROM base AS final
+# Use the .NET 8.0 runtime image to run the app
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build-env /app/publish .
+
+# Set the entry point for the container
 ENTRYPOINT ["dotnet", "LiveChat.dll"]
