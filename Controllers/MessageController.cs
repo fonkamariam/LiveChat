@@ -19,8 +19,8 @@ using System.Linq;
 
 namespace LiveChat.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class MessageController : ControllerBase
     {
         private readonly IConfiguration _configuration;
@@ -34,8 +34,9 @@ namespace LiveChat.Controllers
             _supabaseClient = supabaseClient;
             _hubContext = hubContext;
         }
-        [HttpPost("WebSocket")]
-        public async Task<IActionResult> HandleWebhookEvent([FromBody] object payloadObject)
+        
+        [HttpPost("WebSocketMessage")]
+        public async Task<IActionResult> HandleMessageEvent([FromBody] object payloadObject)
         {
             if (payloadObject == null)
             {
@@ -45,41 +46,319 @@ namespace LiveChat.Controllers
             }
             // Cast the payload to a JObject
             string x =payloadObject.ToString();
+            PayLoad payLoad = JsonConvert.DeserializeObject<PayLoad>(x); 
             
-            await _hubContext.Clients.All.SendAsync("ReceiveMessage", x);
+            if (payLoad.type == "INSERT")
+            {
+                
+                var recp = payLoad.record.RecpientId;
+                var sender = payLoad.record.SenderId;
+                long convIdJson = payLoad.record.ConvId;
 
-            Console.WriteLine("Finished");
-            var count = MessagesHub.GetConnectedClients();
-            Console.WriteLine(count);
+                var response = await _supabaseClient.From<UserProfiledto>()
+                    .Where(n => n.UserId == sender && n.Deleted == false)
+                    .Get();
+                var responseModels = response.Models.FirstOrDefault();
+                if (responseModels == null)
+                {
 
-            /*
-             type InsertPayload = {
-  type: 'INSERT'
-  table: string
-  schema: string
-  record: TableRecord<T>
-  old_record: null
-}
-type UpdatePayload = {
-  type: 'UPDATE'
-  table: string
-  schema: string
-  record: TableRecord<T>
-  old_record: TableRecord<T>
-}
-type DeletePayload = {
-  type: 'DELETE'
-  table: string
-  schema: string
-  record: null
-  old_record: TableRecord<T>
-}
-            */
+                    return BadRequest("Problem getting user profile in ws for conversation");
+                }
+                // for fetching email
+                var response12 = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Id == sender && n.Deleted == false)
+                    .Get();
+                var responseModels12 = response12.Models.FirstOrDefault();
+                if (responseModels12 == null)
+                {
+
+                    return BadRequest("Problem getting user profile in ws for conversation");
+                }
+                payLoad.record.Status = responseModels.Name;
+                payLoad.record.MessageType = responseModels.LastName;
+
+                // sending status,lastSeen,bio,ProfilePicConv
+                
+
+                payLoad.record.OnlineStatus = responseModels.Status;
+                payLoad.record.Bio = responseModels.Bio;
+                payLoad.record.LastSeen = responseModels.LastSeen;
+                payLoad.record.ProfilePic = responseModels.ProfilePic;
+                payLoad.record.Email = responseModels12.Email;
+
+
+
+                /*   START HERE NOTIFICATION
+                var responseRec = await _supabaseClient.From<Userdto>() 
+                            .Where(n => n.Id == recp && n.Deleted == false)
+                            .Get();
+                        if (responseRec == null)
+                        {
+                            return BadRequest("Problem getting user profile in ws for conversation");
+                        } 
+                        var respOnseModelNotification = responseRec.Models.FirstOrDefault();
+                        var notifications = respOnseModelNotification.Notification ?? new Dictionary<string, string>();
+                        if (notifications.ContainsKey(convIdJson.ToString()))
+                        {
+                            Console.WriteLine("found Conversation key with value");
+                            Console.WriteLine(notifications[convIdJson.ToString()]);
+                            notifications[convIdJson.ToString()] = (int.Parse(notifications[convIdJson.ToString()]) + 1).ToString();
+                        } 
+                        else
+                        {
+                            Console.WriteLine("else, Not found key, setting default to one");
+                            notifications[convIdJson.ToString()] = "1"; 
+                        }
+
+
+                        // Serialize the updated notifications back to JSON
+                        respOnseModelNotification.Notification = notifications;
+
+                        // Update the UserProfiledto record in the database
+                        await _supabaseClient.From<Userdto>().Update(respOnseModelNotification);
+                        Console.WriteLine("End of Notification");
+                        // END HERE NOTIFICATION
+                */
+
+                if (recp!= sender)
+                {
+                    await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
+
+                }
+
+            }
+            else if (payLoad.type == "UPDATE" && payLoad.record.Deleted == false) { 
+                var recp = payLoad.record.RecpientId;
+                var sender = payLoad.record.SenderId;
+
+                if (recp != sender)
+                {
+                    await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
+                    await _hubContext.Clients.Group(sender.ToString()).SendAsync("ReceiveMessage", payLoad);
+
+
+                }
+
+            }
+            else if (payLoad.type == "UPDATE" && payLoad.record.Deleted == true)
+            {
+                
+                var final = payLoad.record.Deleteer;
+                var recp = payLoad.record.RecpientId;
+                var sender = payLoad.record.SenderId;
+
+                if (final == recp)
+                {
+                    final = sender;
+                }
+                else
+                {
+                    final = recp;
+                }
+                Console.WriteLine($"DeleteMessage: WS sending to {final}");
+                if (recp != sender)
+                {
+                    await _hubContext.Clients.Group(final.ToString()).SendAsync("ReceiveMessage", payLoad);
+
+                }
+
+
+            }
+            else
+            {
+                Console.WriteLine("Problem, Message neither Upd,Del,Ins");
+            }
+            
+
+            return Ok();
+        }
+        
+        [HttpPost("wsc")]
+        public async Task<IActionResult> HandleConversationEvent([FromBody] object payloadObject)
+        {
+            if (payloadObject == null)
+            {
+                
+                return BadRequest("Payload is null");
+            }
+            // Cast the payload to a JObject
+            string x = payloadObject.ToString();
+            ConvPayLoad convPayLoad = JsonConvert.DeserializeObject<ConvPayLoad>(x);
+
+            await _hubContext.Clients.All.SendAsync("Receive Conversation", convPayLoad);
+
 
 
             return Ok();
         }
+        
+        [HttpPost("WebSocketUser")]
+        public async Task<IActionResult> HandleUserEvent([FromBody] object payloadObject)
+        {
+            if (payloadObject == null)
+            {
+                Console.WriteLine("the paramerter returned is Null");
 
+                return BadRequest("Payload is null");
+            }
+            // Cast the payload to a JObject
+            string x = payloadObject.ToString();
+            UserPayLoad userPayLoad = JsonConvert.DeserializeObject<UserPayLoad>(x);
+            
+
+            if (userPayLoad.type == "UPDATE")
+            {
+                await _hubContext.Clients.All.SendAsync("Receive UserProfile", userPayLoad);
+                return Ok();
+            }
+            else
+            {
+                return BadRequest();
+            }
+        }
+
+        [HttpPut("zeroNotificationMID"), Authorize]
+        public async Task<IActionResult> ZeroNotificationConv([FromQuery] long messageId)
+        {
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
+            {
+                return StatusCode(15, "Invalid Token");
+            }
+            var email = emailClaim.Value.Split(':')[0].Trim();
+            try
+            {
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email && n.Deleted == false)
+                    .Get();
+                var Sender = response.Models.FirstOrDefault();
+
+                if (Sender == null)
+                {
+                    return StatusCode(10, "Invalid Token");
+                }
+                var responseMessage = await _supabaseClient.From<MessageDto>()
+                    .Where(n => n.Id == messageId && n.Deleted == false)
+                    .Get();
+                var SenderMessage = responseMessage.Models.FirstOrDefault();
+
+                if (SenderMessage == null)
+                {
+                    Console.WriteLine("SenderMessage is null MESSAGE");
+                    return StatusCode(11, "Message not found");
+                }
+                SenderMessage.New = false;
+                    await _supabaseClient.From<MessageDto>().Update(SenderMessage);
+                    Console.WriteLine("ZeroNotification DONE MESSAGE");
+
+                    return Ok();
+                
+                /*
+                var notifications = Sender.Notification ?? new Dictionary<string, string>();
+                if (notifications.ContainsKey(convIdPara.ToString()))
+                {
+                    Console.WriteLine("found Conversation key with value in deleting notificaiton");
+                    Console.WriteLine(notifications[convIdPara.ToString()]);
+                    notifications[convIdPara.ToString()] = "0";
+                }
+                else
+                {
+                    Console.WriteLine("else, Not found key, setting default to zero when deleting notificaiton");
+                    notifications[convIdPara.ToString()] = "0";
+                }
+
+
+                // Serialize the updated notifications back to JSON
+                Sender.Notification = notifications;
+
+                // Update the UserProfiledto record in the database
+                await _supabaseClient.From<Userdto>().Update(Sender);
+                Console.WriteLine("End of Notification");
+                // END HERE NOTIFICATION
+                */
+
+               
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return BadRequest("Connection Problem, Check if MessageId is valid");
+            }
+
+        }
+
+        [HttpPut("zeroNotificationCID"), Authorize]
+        public async Task<IActionResult> ZeroNotificationSingle([FromQuery] long convIdPara)
+        {
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
+            {
+                return StatusCode(15, "Invalid Token");
+            }
+            var email = emailClaim.Value.Split(':')[0].Trim();
+            try
+            {
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email && n.Deleted == false)
+                    .Get();
+                var Sender = response.Models.FirstOrDefault();
+
+                if (Sender == null)
+                {
+                    return StatusCode(10, "Invalid Token");
+                }
+                Console.WriteLine($"ZeroNotification Called with a  convId {convIdPara}");
+                var responseMessage = await _supabaseClient.From<MessageDto>()
+                    .Where(n => n.ConvId == convIdPara && n.Deleted == false)
+                    .Get();
+
+                var allmessArray = responseMessage.Models.ToList();
+                if (allmessArray.Any())
+                {
+                    Console.WriteLine("NEW TO FALSE IN BUNCH");
+                    // Create a list of updated messages
+                    var updatedMessages12 = allmessArray.Select(message => { message.New = false; return message; }).ToList();
+
+                    // Batch update all messages
+                    await _supabaseClient.From<MessageDto>().Upsert(updatedMessages12);
+                    return Ok();
+                }
+                
+                return Ok();
+
+                /*
+                var notifications = Sender.Notification ?? new Dictionary<string, string>();
+                if (notifications.ContainsKey(convIdPara.ToString()))
+                {
+                    Console.WriteLine("found Conversation key with value in deleting notificaiton");
+                    Console.WriteLine(notifications[convIdPara.ToString()]);
+                    notifications[convIdPara.ToString()] = "0";
+                }
+                else
+                {
+                    Console.WriteLine("else, Not found key, setting default to zero when deleting notificaiton");
+                    notifications[convIdPara.ToString()] = "0";
+                }
+
+
+                // Serialize the updated notifications back to JSON
+                Sender.Notification = notifications;
+
+                // Update the UserProfiledto record in the database
+                await _supabaseClient.From<Userdto>().Update(Sender);
+                Console.WriteLine("End of Notification");
+                // END HERE NOTIFICATION
+                */
+
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return BadRequest("Connection Problem, Check if MessageId is valid");
+            }
+
+        }
         [HttpPost("SendMessage"), Authorize]
         public async Task<IActionResult> SendMessage([FromBody] MessageUser messageUser)
         {
@@ -100,39 +379,77 @@ type DeletePayload = {
                 {
                     return StatusCode(10, "Invalid Token");
                 }
-                Console.WriteLine("Logged In");
-
+                
 
                 var messageQuery = await _supabaseClient.From<MessageDto>()
                     .Where(n => ((n.SenderId == Sender.Id && n.RecpientId == messageUser.RecpientId))) 
                     .Where(n=> (n.Deleted == false))
                     .Get();
 
-                Console.WriteLine(messageQuery.Models.Count);
                 var anotherMessageQuery = await _supabaseClient.From<MessageDto>()
                     .Where(n => ((n.SenderId == messageUser.RecpientId && n.RecpientId == Sender.Id)))
                     .Where(n => (n.Deleted == false))
                     .Get();
 
 
-                Console.WriteLine(anotherMessageQuery.Models.Count);
-
-                Console.WriteLine("Decision About to made");
                 
                 // Two Decisions Made here....Is is their first ever chat(Create a ConvTable) or not(update ConvTable)
                 if (messageQuery.Models.Count != 0 || anotherMessageQuery.Models.Count!=0)
                     {
-                    Console.WriteLine("Decision: Not a new message");
+                    //Console.WriteLine("Decision: Not a new message");
+                    if (Sender.Id == messageUser.RecpientId)
+                    {                        
+                        var savedMessage = await _supabaseClient.From<MessageDto>()
+                            .Where(p => p.SenderId == messageUser.RecpientId && p.RecpientId ==messageUser.RecpientId)
+                            .Get();
+                        if(savedMessage.Models.Count == 0)
+                        {
+                            return BadRequest("Problem fetching own to own convID");
+                        }
+                        var convModel = savedMessage.Models.FirstOrDefault();
+                        MessageDto newMessageIfOwn = new MessageDto
+                        {
+                            TimeStamp = DateTime.UtcNow,
+                            MessageType = messageUser.MessageType,
+                            Status = "Sent",
+                            SenderId = Sender.Id,
+                            RecpientId = messageUser.RecpientId,
+                            Content = messageUser.Content,
+                            ConvId = convModel.ConvId,
+                            New= false
+                        };
+                        // Update the Conversation Table and insert into the message table
+
+                        var insertResposne1 = await _supabaseClient.From<MessageDto>().Insert(newMessageIfOwn);
+
+                        var messageResposneIf1 = insertResposne1.Models.FirstOrDefault();
+
+                        // Update Conversation Table
+
+                        var updateConvTable1 = await _supabaseClient.From<ConversationDto>()
+                                    .Where(n => n.ConvId == convModel.ConvId)
+                                    .Single();
+                        updateConvTable1.LastMessage = messageResposneIf1.Id;
+                        updateConvTable1.UpdatedTime = messageResposneIf1.TimeStamp;
+
+                        await updateConvTable1.Update<ConversationDto>();
+
+
+                        return Ok(messageResposneIf1);
+
+
+
+                    }
 
                     var fonkaParticipants = await _supabaseClient.From<ParticipantDto>()
                             .Where(p => p.UserId == Sender.Id)
                             .Get();
-                    Console.WriteLine("Fonka Participants");
+                    //Console.WriteLine("Fonka Participants");
 
                     var barokParticipants = await _supabaseClient.From<ParticipantDto>()
                             .Where(p => p.UserId == messageUser.RecpientId)
                             .Get();
-                    Console.WriteLine("Barok Participants");
+                    //Console.WriteLine("Barok Participants");
 
                     Dictionary<long, long> myFirstDictionary = new Dictionary<long, long>();
                     Dictionary<long, long> mySeconDictionary = new Dictionary<long, long>();
@@ -142,8 +459,7 @@ type DeletePayload = {
                     mySeconDictionary=barokParticipants.Models.ToDictionary(f => f.ParticipantId, f2 => f2.ConversationId);
                     
                     long ConvId = myFirstDictionary.Values.FirstOrDefault(values => mySeconDictionary.ContainsValue(values));
-                    Console.WriteLine(ConvId);
-
+                    
 
                     if (ConvId == 0)
                         {
@@ -160,7 +476,11 @@ type DeletePayload = {
                             SenderId = Sender.Id,
                             RecpientId = messageUser.RecpientId,
                             Content = messageUser.Content,
-                            ConvId = ConvId
+                            ConvId = ConvId,
+                            IsAudio = messageUser.IsAudio,
+                            IsImage = messageUser.IsImage,
+                            New = true
+
                         };
                         // Update the Conversation Table and insert into the message table
                         
@@ -178,60 +498,97 @@ type DeletePayload = {
                     
                     await updateConvTable.Update<ConversationDto>();
 
+                    /*
+                    //   START HERE NOTIFICATION
+                    var recieverNoti12 = await _supabaseClient.From<Userdto>()
+                        .Where(n => n.Id == messageUser.RecpientId && n.Deleted == false)
+                        .Get();
+                    var RecvieverNoti11 = recieverNoti12.Models.FirstOrDefault();
+
+                    var notifications123 = RecvieverNoti11.Notification ?? new Dictionary<string, string>();
+                    if (notifications123.ContainsKey(ConvId.ToString()))
+                    {
+                        //notifications[ConvId.ToString()] = "0";
+                        int currentCount = int.Parse(notifications123[ConvId.ToString()]);
+                        notifications123[ConvId.ToString()] = (currentCount + 1).ToString();
+                    }
+                    else
+                    {
+                        //notifications[ConvId.ToString()] = "0";
+                        Console.WriteLine("Notification not found, creating new one with value 1");
+                        // Create a new notification with count 1
+                        notifications123[ConvId.ToString()] = "1";
+                    }
+
+                    // Serialize the updated notifications back to JSON
+                    RecvieverNoti11.Notification = notifications123;
+
+                    // Update the UserProfiledto record in the database
+                    await _supabaseClient.From<Userdto>().Update(RecvieverNoti11);
+                    // END HERE NOTIFICATION
+                    */
 
                     return Ok(messageResposneIf); 
                          
 
                     }
-                Console.WriteLine("Decision: New Messsage");
-
-                // Create new Conversation by meddling with Message,Conversation and Participation Table
-
-                MessageDto newMessage = new MessageDto
-                        {
-                            TimeStamp = DateTime.UtcNow,
-                            MessageType = messageUser.MessageType,
-                            Status = "Sent",
-                            SenderId = Sender.Id,
-                            RecpientId = messageUser.RecpientId,
-                            Content = messageUser.Content
-                        };
-                // Create a new Message Table with a convId of NULL temporarily
-                Console.WriteLine("New message Formed");
-
-                var insertMessage = await _supabaseClient.From<MessageDto>().Insert(newMessage);
-                var messageResposne = insertMessage.Models.FirstOrDefault(); 
-
-                Console.WriteLine("Message Inserted");
-                // create a new row in the conversation table
+               
                 
+                //Console.WriteLine("Decision: New Messsage");
 
+                
                 ConversationDto newConversation = new ConversationDto
                 {
                     CreationTime = DateTime.UtcNow,
                     UpdatedTime = DateTime.UtcNow,
-                    LastMessage = messageResposne.Id
+                    LastMessage = 346
                 };
 
                 var newConvTable = await _supabaseClient.From<ConversationDto>().Insert(newConversation);
 
-                var newConvResponse = newConvTable.Models.FirstOrDefault();
+                var newConvResponse = newConvTable.Models.FirstOrDefault(); 
 
-                Console.WriteLine("Conversation Inserted");
-                Console.WriteLine(newConvResponse.ConvId);
+                //Console.WriteLine("Conversation Inserted");
+                //Console.WriteLine(newConvResponse.ConvId);
+                // Create new Conversation by meddling with Message,Conversation and Participation Table
+
+                MessageDto newMessage = new MessageDto
+                {
+                    TimeStamp = DateTime.UtcNow,
+                    MessageType = messageUser.MessageType,
+                    Status = "Sent",
+                    SenderId = Sender.Id,
+                    RecpientId = messageUser.RecpientId,
+                    Content = messageUser.Content,
+                    ConvId = newConvResponse.ConvId,
+                    IsImage = messageUser.IsImage,
+                    IsAudio = messageUser.IsAudio,
+                    New  = true
+                };
+                // Create a new Message Table with a convId of NULL temporarily
+                //Console.WriteLine("New message Formed");
+
+                var insertMessage = await _supabaseClient.From<MessageDto>().Insert(newMessage);
+                var messageResposne = insertMessage.Models.FirstOrDefault();
+
+                //Console.WriteLine("Message Inserted");
+                // create a new row in the conversation table
+
+
 
                 // update the NULL convId back
-                Console.WriteLine("Updating ConvId back....");
+               // Console.WriteLine("Updating Last Message id in Conv table ");
 
 
-                var responseUpdateMessageId = await _supabaseClient.From<MessageDto>()
-                                                .Where(n => n.Id == messageResposne.Id)
+                var responseUpdateMessageId = await _supabaseClient.From<ConversationDto>()
+                                                .Where(n => n.ConvId == newConvResponse.ConvId)
                                                 .Single();
-                
-                responseUpdateMessageId.ConvId = newConvResponse.ConvId;
-                await responseUpdateMessageId.Update<MessageDto>();
+
+                responseUpdateMessageId.LastMessage = messageResposne.Id;
+                await responseUpdateMessageId.Update<ConversationDto>();
+
                                                 
-                Console.WriteLine("Updated ConvId back");
+                //Console.WriteLine("Updated last Message Id in conversation Table");
 
                 ParticipantDto newParticipant1 = new ParticipantDto
                                             {
@@ -248,19 +605,54 @@ type DeletePayload = {
                                                 .Insert(newParticipant1);
                                             var addNewParticipants2 = await _supabaseClient.From<ParticipantDto>()
                                                 .Insert(newParticipant2);
-                Console.WriteLine("Created Participants");
+                //Console.WriteLine("Created Participants");
+                var responseUpdateMessagefinal = await _supabaseClient.From<MessageDto>()
+                                               .Where(n => n.Id == messageResposne.Id)
+                                               .Get();
+                var finalBound = responseUpdateMessagefinal.Models.FirstOrDefault();
+                long convIdJson = newConvResponse.ConvId;
+                /*
+                //   START HERE NOTIFICATION
+                var recieverNoti = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Id == messageUser.RecpientId && n.Deleted == false)
+                    .Get();
+                var RecvieverNoti = recieverNoti.Models.FirstOrDefault();
 
-                return Ok(messageResposne);
+                var notifications = RecvieverNoti.Notification ?? new Dictionary<string, string>();
+                if (notifications.ContainsKey(convIdJson.ToString()))
+                {
+                    Console.WriteLine("found json when creating conv, and doing Nothing");
+                        notifications[convIdJson.ToString()] = "0";
+                    int currentCount = int.Parse(notifications[convIdJson.ToString()]);
+                    notifications[convIdJson.ToString()] = (currentCount + 1).ToString();
+                }
+                else
+                {
+                    Console.WriteLine("Notification not found, creating new one with value 1");
+                    // Create a new notification with count 1
+                    notifications[convIdJson.ToString()] = "1";
+                }
+
+                // Serialize the updated notifications back to JSON
+                RecvieverNoti.Notification = notifications;
+
+                // Update the UserProfiledto record in the database
+                await _supabaseClient.From<Userdto>().Update(RecvieverNoti);
+                // END HERE NOTIFICATION
+                */
+
+                return Ok(finalBound);
                                        
                                 
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine(ex);
                 return BadRequest("Connection Problem, Backend");
             }
         }
             
-        [HttpPut("EditMessage"), Authorize]
+        [HttpPut("EditMessage"), Authorize] 
         public async Task<IActionResult> EditMessage([FromBody] EditMessage editMessage)
         {
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
@@ -286,6 +678,7 @@ type DeletePayload = {
                     .Where(n => (n.Deleted == false))
                     .Single();
                 updateMessage.Content = editMessage.Content;
+                updateMessage.Edited = true;
                 var hey = await updateMessage.Update<MessageDto>();
                 var x = hey.Models.FirstOrDefault();
                 
@@ -299,7 +692,7 @@ type DeletePayload = {
         }
 
         [HttpDelete("DeleteMessage"), Authorize]
-        public async Task<IActionResult> DeleteMessage([FromBody] DeleteMessage deleteMessage)
+        public async Task<IActionResult> DeleteMessage([FromQuery] long deleteMessage)
         {
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
@@ -322,22 +715,28 @@ type DeletePayload = {
                 // Two Decisions here, Is it the last message in the conversation (Yes:delete Conv,participant,message)
                 // (No:update the last message from conversation table and delete the message from the message table)
                 var getMessageInfo = await _supabaseClient.From<MessageDto>()
-                        .Where(n => n.Id == deleteMessage.MessageId && n.Deleted == false)
+                        .Where(n => n.Id == deleteMessage && n.Deleted == false)
                         .Get();
                 Console.WriteLine("Got the message");
                     var getRecpientId = getMessageInfo.Models.FirstOrDefault();
+                    
                     if (getRecpientId == null)
                     {
                         return BadRequest("Problem with the parameter Id");
                     }
+                long realRecpId = getRecpientId.RecpientId;
+                if (getRecpientId.RecpientId == Sender.Id)
+                {
+                    realRecpId = getRecpientId.SenderId;
+                }
                 var messageQuery = await _supabaseClient.From<MessageDto>()
-                    .Where(n => ((n.SenderId == Sender.Id && n.RecpientId == getRecpientId.RecpientId)))
+                    .Where(n => ((n.SenderId == Sender.Id && n.RecpientId == realRecpId)))
                     .Where(n => (n.Deleted == false))
                     .Get();
 
 
                 var anotherMessageQuery = await _supabaseClient.From<MessageDto>()
-                    .Where(n => ((n.SenderId == getRecpientId.RecpientId && n.RecpientId == Sender.Id)))
+                    .Where(n => ((n.SenderId == realRecpId && n.RecpientId == Sender.Id)))
                     .Where(n => (n.Deleted == false))
                     .Get();
 
@@ -359,15 +758,18 @@ type DeletePayload = {
                             await _supabaseClient.From<ParticipantDto>()
                                 .Where(n => n.ConversationId == getRecpientId.ConvId)
                                 .Delete();
-                            await _supabaseClient.From<ConversationDto>()
+                            
+                    await _supabaseClient.From<ConversationDto>()
                                 .Where(n => n.ConvId == getRecpientId.ConvId)
                                 .Delete();
                     
                     var up = await _supabaseClient.From<MessageDto>()
-                                .Where(n => n.Id == deleteMessage.MessageId)
+                                .Where(n => n.Id == deleteMessage)
                                 .Single();
                             up.Deleted = true;
+                            up.Deleteer = Sender.Id;
                             await up.Update<MessageDto>();
+
                     
 
                     return Ok("Deleted");
@@ -386,19 +788,19 @@ type DeletePayload = {
                 Console.WriteLine("Got Conversation Id");
 
 
-                if (deleteMessage.MessageId == getconvId.LastMessage)
+                if (deleteMessage == getconvId.LastMessage)
                         {
                     Console.WriteLine("Correct Message Id");
 
                     // First part: where Sender is Sender.Id and Recipient is getRecpientId.RecpientId
                     var messagesSent = await _supabaseClient.From<MessageDto>()
-                        .Where(n => n.SenderId == Sender.Id && n.RecpientId == getRecpientId.RecpientId)
+                        .Where(n => n.SenderId == Sender.Id && n.RecpientId == realRecpId)
                         .Where(n => n.Deleted == false)
                         .Get();
 
                     // Second part: where Sender is getRecpientId.RecpientId and Recipient is Sender.Id
                     var messagesReceived = await _supabaseClient.From<MessageDto>()
-                        .Where(n => n.SenderId == getRecpientId.RecpientId && n.RecpientId == Sender.Id)
+                        .Where(n => n.SenderId == realRecpId && n.RecpientId == Sender.Id)
                         .Where(n=> n.Deleted == false)
                         .Get();
                   
@@ -423,9 +825,10 @@ type DeletePayload = {
                 }
 
                 var antoherHey = await _supabaseClient.From<MessageDto>()
-                    .Where(n => n.Id == deleteMessage.MessageId)
+                    .Where(n => n.Id == deleteMessage)
                     .Single();
                 antoherHey.Deleted = true;
+                antoherHey.Deleteer = Sender.Id;
 
                 await antoherHey.Update<MessageDto>();
                             
@@ -440,7 +843,7 @@ type DeletePayload = {
             }
         }
 
-        [HttpGet("GetMessageHistory"), Authorize]
+        [HttpGet("GetMessageHistory"), Authorize] 
         public async Task<IActionResult> GetMessageHistory(string query)
             {
                 
@@ -479,226 +882,75 @@ type DeletePayload = {
                     return BadRequest("Connection Problem");
                 }
             }
-
-        [HttpGet("GetMessageId"), Authorize]
-        public async Task<IActionResult> GetMessageId(MessageUser messageUser)
-            {
-
-                var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
-                if (emailClaim == null)
-                {
-                    return BadRequest("Invalid Token");
-                }
-
-                try
-                {
-
-                    var GetSender = await _supabaseClient.From<Userdto>()
-                        .Where(n => n.Email == emailClaim.ToString()&& n.Deleted==false).Get();
-
-
-                    try
-                    {
-                        var Sender = GetSender.Models.FirstOrDefault();
-
-
-                        if (Sender == null)
-                        {
-                            return BadRequest("Invalid Token");
-                        }
-
-                        var fonkaParticipants = await _supabaseClient
-                            .From<ParticipantDto>()
-                            .Where(p => p.UserId == Sender.Id )
-                            .Get();
-
-                        var barokParticipants = await _supabaseClient
-                            .From<ParticipantDto>()
-                            .Where(p => p.UserId == messageUser.RecpientId)
-                            .Get();
-
-                        Dictionary<long, long> myFirstDictionary = new Dictionary<long, long>();
-                        Dictionary<long, long> mySeconDictionary = new Dictionary<long, long>();
-
-                        myFirstDictionary =
-                            fonkaParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
-                        mySeconDictionary =
-                            barokParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
-
-                        long ConvId = 0;
-                        foreach (var key in myFirstDictionary.Keys)
-                        {
-
-                            if (mySeconDictionary.ContainsKey(myFirstDictionary[key]))
-                            {
-                                ConvId = myFirstDictionary[key];
-                                break;
-                            }
-                        }
-
-                        if (ConvId == 0)
-                        {
-                            return BadRequest("Internal Server Error, ConvId not found when supposed to be found");
-                        }
-
-                        // I have the coversation Id
-                        // Get the message Id from the Database
-                        var getMessageinfo = await _supabaseClient.From<MessageDto>()
-                            .Where(n => n.SenderId == Sender.Id)
-                            .Where(n => n.RecpientId == messageUser.RecpientId)
-                            .Where(n => n.ConvId == ConvId)
-                            .Where(n => n.Content == messageUser.Content)
-                            .Where(n=>n.Deleted==false)
-                            .Get();
-                        var messageId = getMessageinfo.Models.FirstOrDefault();
-                        if (messageId == null)
-                        {
-                            return BadRequest("Internal Server Error when fetching message Info, Consult Builder");
-                        }
-
-                        return Ok(messageId.Id);
-
-
-                    }
-                    catch (Exception)
-                    {
-                        return BadRequest("Connection Problem");
-                    }
-
-                }
-                catch
-                {
-                    return BadRequest("Connection Problem");
-                }
-            }
-
-        [HttpGet("GetConversationId"), Authorize]
-
-        public async Task<IActionResult> GetConversationId(long talkee, string parameterType)
-            {
-            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
-            if (emailClaim == null)
-            {
-                return BadRequest("Invalid Token");
-            }
-
-            try
-            {
-
-                var GetSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
-
-
-
-                try
-                {
-                        var Sender = GetSender.Models.FirstOrDefault();
-
-
-                        if (Sender == null)
-                        {
-                            return BadRequest("Invalid Token");
-                        }
-
-                        // get Conversation Id
-                        var fonkaParticipants = await _supabaseClient
-                            .From<ParticipantDto>()
-                            .Where(p => p.UserId == Sender.Id)
-                            .Get();
-
-                        var barokParticipants = await _supabaseClient
-                            .From<ParticipantDto>()
-                            .Where(p => p.UserId == talkee)
-                            .Get();
-
-                        Dictionary<long, long> myFirstDictionary = new Dictionary<long, long>();
-                        Dictionary<long, long> mySeconDictionary = new Dictionary<long, long>();
-
-                        myFirstDictionary =
-                            fonkaParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
-                        mySeconDictionary =
-                            barokParticipants.Models.ToDictionary(f => f.ConversationId, f2 => f2.ParticipantId);
-
-                        long ConvId = 0;
-                        foreach (var key in myFirstDictionary.Keys)
-                        {
-
-                            if (mySeconDictionary.ContainsKey(myFirstDictionary[key]))
-                            {
-                                ConvId = myFirstDictionary[key];
-                                break;
-                            }
-                        }
-
-                        if (ConvId == 0)
-                        {
-                            return BadRequest("No Conversation with user with provided user");
-                        }
-
-                        // I have the coversation Id
-                        return Ok(ConvId);
-
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Connection Problem in second part");
-                }
-            }
-            catch (Exception)
-            {
-                return BadRequest("Connection Problem first part");
-            }
-            }
-
-        [HttpGet("GetConversationInfo"), Authorize]
-
-        public async Task<IActionResult> GetConversationInfo(long parameterConvId)
+       
+        [HttpGet("GetConversationMessage"), Authorize] 
+        public async Task<IActionResult> GetConversationMessage([FromQuery] long query)
         {
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
             {
-                return BadRequest("Invalid Token");
+                return StatusCode(15, "Invalid Token");
             }
-
+            var email = emailClaim.Value.Split(':')[0].Trim();
             try
             {
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email && n.Deleted == false)
+                    .Get();
+                var hey = response.Models.FirstOrDefault();
 
-                var GetSender = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
-
-
-
-                try
+                if (hey == null)
                 {
-                    var Sender = GetSender.Models.FirstOrDefault();
-
-
-                    if (Sender == null)
-                    {
-                        return BadRequest("Invalid Token");
-                    }
-
-                    // get Conversation info
-                    var convInfo = await _supabaseClient.From<ConversationDto>()
-                        .Where(n => n.ConvId == parameterConvId)
+                    return StatusCode(10, "Invalid Token");
+                }
+               
+                // get Conversation info 
+                var convMessage = await _supabaseClient.From<MessageDto>()
+                        .Where(n => n.ConvId == query && n.Deleted==false)
+                        .Where(n=> n.SenderId == hey.Id || n.RecpientId == hey.Id)
+                        .Order(n => n.TimeStamp, Constants.Ordering.Ascending)
                         .Get();
-                    var conversationInfo = convInfo.Models.FirstOrDefault();
-                    return Ok(conversationInfo);
-                }
-                catch (Exception)
+                var allmessArray = convMessage.Models.ToList();
+                if (allmessArray.Any())
                 {
-                    return BadRequest("Problem in the conversation Id in the parameter");
+
+                    var alvarez = await _supabaseClient.From<MessageDto>()
+                        .Where(n => n.ConvId == query && n.Deleted == false)
+                        .Where(n => n.RecpientId == hey.Id && n.New == true)
+                        .Get();
+                     var messagesToUpdateList = alvarez.Models.ToList();
+
+                    
+                foreach (var message in messagesToUpdateList)
+                {
+                    message.New = false;
+                    await _supabaseClient.From<MessageDto>().Update(message);
                 }
+                    var convMessage100 = await _supabaseClient.From<MessageDto>()
+                            .Where(n => n.ConvId == query && n.Deleted == false)
+                            .Where(n => n.SenderId == hey.Id || n.RecpientId == hey.Id)
+                            .Order(n => n.TimeStamp, Constants.Ordering.Ascending)
+                            .Get();
+                    var allmessArray100 = convMessage100.Models.ToList();
+                    // var updatedMessages12 = allmessArray.Select(message => { message.New = false; return message; }).ToList();
+
+                    // Batch update all messages
+                    //await _supabaseClient.From<MessageDto>().Upsert(updatedMessages12);
+
+                    return Ok(allmessArray100);
+                }
+                return Ok("Array empty");
+                 
+                
             }
             catch (Exception)
             {
                 return BadRequest("Connection Problem first part");
             }
         }
-
-        [HttpGet("GetConversationMessage"), Authorize]
-
-        public async Task<IActionResult> GetConversationMessage([FromBody] GetConvMessageModel getConvMessageModel)
+        
+        [HttpGet("GetLastMessage"), Authorize]
+        public async Task<IActionResult> GetLastMessage([FromQuery] long query)
         {
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
@@ -720,13 +972,20 @@ type DeletePayload = {
 
                 // get Conversation info 
                 var convMessage = await _supabaseClient.From<MessageDto>()
-                        .Where(n => n.ConvId == getConvMessageModel.ConvId && n.Deleted==false)
-                        .Where(n=> n.SenderId == hey.Id || n.RecpientId == hey.Id)
+                        .Where(n => n.ConvId == query && n.Deleted == false)
+                        .Where(n => n.SenderId == hey.Id || n.RecpientId == hey.Id)
                         .Order(n => n.TimeStamp, Constants.Ordering.Ascending)
                         .Get();
-                    var allmessArray = convMessage.Models.ToList();
-                    return Ok(allmessArray);
                 
+                var allmessArray = convMessage.Models.LastOrDefault();
+                if (allmessArray == null)
+                {
+                    return Ok(null);
+                }
+                
+                return Ok(allmessArray);
+                
+
             }
             catch (Exception)
             {
@@ -734,7 +993,8 @@ type DeletePayload = {
             }
         }
 
-        [HttpGet("GetAllConversationDirect"), Authorize]
+
+        [HttpGet("GetAllConversationDirect"), Authorize] 
         
         public async Task<IActionResult> GetAllConversationDirect()
         {
@@ -776,10 +1036,21 @@ type DeletePayload = {
                         long messageId = messageIdConv.LastMessage;
                         
                     var messResponse = await _supabaseClient.From<MessageDto>()
-                        .Where(n => n.Id == messageId)
+                        .Where(n => n.Id == messageId && n.Deleted == false)
                         .Get();
                     var getContent = messResponse.Models.FirstOrDefault();
                     string content = getContent.Content;
+                    bool isaudio = getContent.IsAudio;
+                    bool isimage = getContent.IsImage;
+                    long LastMessageId = getContent.Id;
+                    bool seenUnseen = getContent.New;
+                    long messageSender200 = getContent.SenderId;
+                    var messResponseNoti = await _supabaseClient.From<MessageDto>()
+                       .Where(n => n.ConvId == convId && n.Deleted == false)
+                       .Where(n=>n.RecpientId==hey.Id && n.New == true)
+                       .Get();
+                    var getContentNoti = messResponseNoti.Models.Count;
+                    //Console.WriteLine($"Notification for {content} {getContentNoti}");
 
                     var userResponse = await _supabaseClient.From<ParticipantDto>()
                             .Where(n => n.ConversationId == convId)
@@ -791,15 +1062,15 @@ type DeletePayload = {
                     if (first.UserId == second.UserId)
                     {
                         UserId = second.UserId;
-                        Console.WriteLine("Saved Messages");
-
+                        
+                       
                     }
                     else if (first.UserId != hey.Id)
                     {
-                        UserId = second.UserId;
+                        UserId = first.UserId;
                     }
                     else if (second.UserId!=hey.Id) {
-                        UserId = first.UserId;
+                        UserId = second.UserId;
                     }
                     else
                     {
@@ -809,20 +1080,62 @@ type DeletePayload = {
                     {
                         return BadRequest("UserId is 0");
                     }
+                    
                     var getProfile = await _supabaseClient.From<UserProfiledto>()
                         .Where(n => n.UserId == UserId)
                         .Get();
                     var getProfile2 = getProfile.Models.FirstOrDefault();
                     var userName = getProfile2.Name;
+                    
+                    // Get user Email
+                    var getConvEmail = await _supabaseClient.From<Userdto>()
+                        .Where(n=>n.Id == hey.Id)
+                        .Get();
+                    var getEmail = getConvEmail.Models.FirstOrDefault();
+
+                    /*
+                    // Start Notification 
+                    
+                    var notifications = getEmail.Notification ?? new Dictionary<string, string>();
+                    // If the key exists, increment its value 
+                    long intValue = 0;
+                   if (notifications.ContainsKey(convId.ToString()))
+                    {
+                   
+                        intValue = long.Parse(notifications[convId.ToString()]);
+
+                       
+                    }
+                    */
+                    List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getProfile2.ProfilePic);
+                    //allProfilePic.Reverse();
+                    if (allProfilePic != null)
+                    {
+                        allProfilePic.Reverse();
+                       // Console.WriteLine("REversed HHHH");
+                    }
+                    
 
                     CustomConv xz = new CustomConv
                     {
                         UserName = userName,
                         UpdatedTime = messageIdConv.UpdatedTime,
                         Message = content,
-                        ConversationId = convId
-                    };
-                        
+                        Seen = seenUnseen,
+                        UserId = UserId,
+                        ConvId = convId,
+                        LastName = getProfile2.LastName,
+                        MessageId = LastMessageId,
+                        Status = getProfile2.Status,
+                        NotificationCount= getContentNoti,
+                        LastSeen = getProfile2.LastSeen,
+                        Bio = getProfile2.Bio,
+                        Email = getEmail.Email,
+                        IsAudio= isaudio,
+                        IsImage = isimage,
+                        ProfilePicConv= allProfilePic,
+                        MessageSender = messageSender200
+                    }; 
                         allyouNeed.Add(xz);
                     }
                     var orderedResults = allyouNeed.OrderByDescending(n => n.UpdatedTime).ToList();
@@ -830,13 +1143,14 @@ type DeletePayload = {
                  return Ok(orderedResults);
                                 
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine(ex);
                 return StatusCode(30,"Connection Problem, Backend"); 
             }
         }
 
-        [HttpDelete("DeleteConversation"), Authorize]
+        [HttpDelete("DeleteConversation"), Authorize]  
         
         public async Task<IActionResult> DeleteConversaion([FromBody] DeleteConv deleteConv)
         {
@@ -860,43 +1174,41 @@ type DeletePayload = {
                 // Delete all messages
                 // Delete Participants
                 // Delete Conversation finally
-                Console.WriteLine(deleteConv.Id);
-               
-                    var up = await _supabaseClient.From<MessageDto>()
-                     .Where(n => n.ConvId == deleteConv.Id)
-                     .Single();
-                    if (up == null)
-                    {
-                        return BadRequest("up is null");
-                    }
-                    up.Deleted = true;
-                    await up.Update<MessageDto>();
-                    
-                
-                /*
-                 var up = await _supabaseClient.From<MessageDto>()
-                                .Where(n => n.Id == deleteMessage.MessageId)
-                                .Single();
-                            up.Deleted = true;
-                            await up.Update<MessageDto>();
-                */
+                //Console.WriteLine("DELETE CONVERSATION");
+                //Console.WriteLine(deleteConv);
                 await _supabaseClient.From<ParticipantDto>()
-                        .Where(n => n.ConversationId == deleteConv.Id)
+                        .Where(n => n.ConversationId == deleteConv.ConvId)
                         .Delete();
-                Console.WriteLine("second");
-
+                //Console.WriteLine("PartCIPANT");
                 await _supabaseClient.From<ConversationDto>()
-                    .Where(n => n.ConvId == deleteConv.Id)
+                    .Where(n => n.ConvId == deleteConv.ConvId)
                     .Delete();
 
-                Console.WriteLine("thrid");
+                
+                var up1 = await _supabaseClient.From<MessageDto>()
+                     .Where(n => n.ConvId == deleteConv.ConvId && n.Deleted==false)
+                     .Get();
+                var up = up1.Models.ToList();
+                /*
+                foreach (var message in up)
+                {
+                    message.Deleted = true;
+                    await _supabaseClient.From<MessageDto>()
+                                         .Where(m => m.Id == message.Id)
+                                         .Update(message);
+                }
+                */
+                if (up.Any())
+                {
+                    // Create a list of updated messages
+                    var updatedMessages = up.Select(message => { message.Deleted = true; return message; }).ToList();
+                   
+                    // Batch update all messages
+                    await _supabaseClient.From<MessageDto>().Upsert(updatedMessages);
+              
+                }
 
                 
-                
-
-
-
-
 
                 return Ok("Successfully Deleted");
                 

@@ -48,6 +48,7 @@ builder.Services.AddCors(options =>
             .WithOrigins("http://localhost:3000")
             .AllowAnyHeader()
             .AllowAnyMethod()
+            .SetIsOriginAllowed((host)=>true)
             .AllowCredentials());
 });
 // Merge the contents of secrets.json into the configuration
@@ -69,6 +70,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 ValidateAudience = false,
                 ValidateLifetime = true, // Ensure token has not expired
                 ClockSkew = TimeSpan.Zero, // Optionally, set clock skew to zero to prevent any clock differences
+            };
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+
+                    // If the request is for our SignalR hub...
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/messagesHub"))
+                    {
+                        // Read the token out of the query string
+                        context.Token = accessToken;
+                    }
+                    return Task.CompletedTask;
+                }
             };
         }
         else

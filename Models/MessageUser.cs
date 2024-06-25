@@ -10,5 +10,9 @@
         
         public string MessageType { get; set; } = "";
 
+        public bool IsAudio { get; set; }
+
+        public bool IsImage { get; set; }
+
     }
 }

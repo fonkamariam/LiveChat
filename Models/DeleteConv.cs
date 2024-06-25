@@ -3,6 +3,8 @@ namespace LiveChat.Models
     public class DeleteConv
     {
                
-        public long Id { get; set; }
+        public long ConvId { get; set; }
+        public long OtherId { get; set; }
+        public long OwnId { get; set; }
     }
 }

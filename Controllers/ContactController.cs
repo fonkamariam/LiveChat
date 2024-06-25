@@ -20,52 +20,55 @@ namespace LiveChat.Controllers
             _supabaseClient = supabaseClient;
         }
 
-        [HttpPost("AddContact_Email"), Authorize]
-        public async Task<IActionResult> AddContact_Email(string emailPara)
+        [HttpPost("AddContact"), Authorize]
+        public async Task<IActionResult> AddContact_Email([FromBody] string emailPara)
         {
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
             {
-                return BadRequest("Invalid Token");
+                return StatusCode(15, "Invalid Token");
             }
-
+            var email = emailClaim.Value.Split(':')[0].Trim();
             try
             {
-                var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailClaim.ToString()&&n.Deleted==false).Get();
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email && n.Deleted == false)
+                    .Get();
+                var hey = response.Models.FirstOrDefault();
 
-                var Contactee = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailPara && n.Deleted == false).Get();
-
-                try
+                if (hey == null)
                 {
-                    var hey1 = Contacter.Models.FirstOrDefault();
+                    return StatusCode(10, "Invalid Token");
 
+                }
+                
+                var Contactee = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == emailPara && n.Deleted == false)
+                    .Get();
+                    
                     var hey2 = Contactee.Models.FirstOrDefault();
-
-                    if (hey1 == null)
-                    {
-                        return BadRequest("Invalid Token");
-                    }
 
                     if (hey2 == null)
                     {
-                        return NotFound("Not Found by such email");
+                        return NotFound("the email is invalid or It doesn't have a fonkagram account");
                     }
-
+                    if(hey.Id == hey2.Id)
+                {
+                    return BadRequest("You can't add yourself as a contact");
+                }
                     var response1 = await _supabaseClient
                         .From<ContactDto>()
-                        .Where(n => n.ContacterId == hey1.Id && n.ContacteeId==hey2.Id)
+                        .Where(n => n.ContacterId == hey.Id && n.ContacteeId==hey2.Id)
                         .Get();
 
                     // Check if the user profile exists
                     if (response1.Models.Count != 0)
                     {
-                        return NotFound("Already in Contact");
+                        return NotFound("Already in Contact"); 
                     }
                     var response2 = await _supabaseClient
                         .From<ContactDto>()
-                        .Where(n => n.ContacterId == hey2.Id && n.ContacteeId == hey1.Id)
+                        .Where(n => n.ContacterId == hey2.Id && n.ContacteeId == hey.Id)
                         .Get();
                     bool y = false;
                     if (response2.Models.Count!=0)
@@ -75,34 +78,25 @@ namespace LiveChat.Controllers
                         if (HeyCheck.Block == true)
                         {
                             y = true;
+                            
                         }
                     }
                     
 
                     var contactDto = new ContactDto
                     {
-                        ContacterId = hey1.Id,
+                        ContacterId = hey.Id,
                         ContacteeId = hey2.Id,
                         Blocked = y,
                         Block = false,
                         created_at = DateTime.UtcNow
                     };
 
-                    try
-                    {
+                    
                         var responseInserted = await _supabaseClient.From<ContactDto>().Insert(contactDto);
 
                         return Ok("Contact Added");
-                    }
-                    catch (Exception)
-                    {
-                        return BadRequest("No Connection for Inserting Contact");
-                    }
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
+                    
             }
             catch (Exception)
             {
@@ -110,139 +104,55 @@ namespace LiveChat.Controllers
             }
         }
 
-        [HttpPost("AddContact_Username"), Authorize]
-        public async Task<IActionResult> AddContact_Username(string UserName)
+        [HttpDelete("RemoveContact"), Authorize] 
+        public async Task<IActionResult> RemoveContact_Email([FromBody] string emailPara)
         {
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
             {
-                return BadRequest("Invalid Token");
+                return StatusCode(15, "Invalid Token");
             }
-
+            var email = emailClaim.Value.Split(':')[0].Trim();
             try
             {
-                var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailClaim.ToString()&& n.Deleted==false).Get();
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email && n.Deleted == false)
+                    .Get();
+                var hey = response.Models.FirstOrDefault();
 
-                var Contactee = await _supabaseClient.From<UserProfiledto>()
-                    .Where(n => n.UserName == UserName && n.Deleted==false).Get();
-                
-                try
+                if (hey == null)
                 {
-                    var hey1 = Contacter.Models.FirstOrDefault();
+                    return StatusCode(10, "Invalid Token");
 
-                    var hey2 = Contactee.Models.FirstOrDefault();
-
-                    if (hey1 == null)
-                    {
-                        return BadRequest("Invalid Token");
-                    }
-
-                    if (hey2 == null)
-                    {
-                        return BadRequest("Invalid User Name"); 
-                    }
-
-                    var response1 = await _supabaseClient
-                        .From<ContactDto>()
-                        .Where(n => n.ContacterId == hey1.Id && n.ContacteeId == hey2.Id)
-                        .Get();
-
-                    // Check if the user profile exists
-                    if (response1.Models.Count != 0)
-                    {
-                        return NotFound("Already in Contact");
-                    }
-                    var response2 = await _supabaseClient
-                        .From<ContactDto>()
-                        .Where(n => n.ContacterId == hey2.Id && n.ContacteeId == hey1.Id)
-                        .Get();
-                    bool y = false;
-                    if (response2.Models.Count != 0)
-                    {
-                        var HeyCheck = response2.Models.FirstOrDefault();
-
-                        if (HeyCheck.Block == true)
-                        {
-                            y = true;
-                        }
-                    }
-
-                    var contactDto = new ContactDto
-                    {
-                        ContacterId = hey1.Id,
-                        ContacteeId = hey2.Id,
-                        Blocked = y,
-                        Block = false,
-                        created_at = DateTime.UtcNow
-                    };
-
-                    try
-                    {
-                        var responseInserted = await _supabaseClient.From<ContactDto>().Insert(contactDto);
-
-                        return Ok("Contact Added");
-                    }
-                    catch (Exception)
-                    {
-                        return BadRequest("No Connection for Inserting Contact");
-                    }
                 }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
-            }
-            catch (Exception)
-            {
-                return BadRequest("No Connection, Please Try again");
-            }
-        }
-
-        [HttpDelete("RemoveContact_Email"), Authorize] 
-        public async Task<IActionResult> RemoveContact_Email(string emailPara)
-        {
-            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
-            if (emailClaim == null)
-            {
-                return BadRequest("Invalid Token");
-            }
-
-            try
-            {
-                var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailClaim.ToString()&& n.Deleted==false).Get();
 
                 var Contactee = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailPara && n.Deleted==false).Get();
+                    .Where(n => n.Email == emailPara && n.Deleted == false)
+                    .Get();
 
-                try
+                var hey2 = Contactee.Models.FirstOrDefault();
+
+                if (hey2 == null)
                 {
-                    var hey1 = Contacter.Models.FirstOrDefault();
-
-                    var hey2 = Contactee.Models.FirstOrDefault();
-
-                    if (hey1 == null)
-                    {
-                        return BadRequest("Invalid Token");
-                    }
-
-                    if (hey2 == null)
-                    {
-                        return NotFound("No user by such email");
-                    }
-
-                    await _supabaseClient
+                    return NotFound("the email is invalid or It doesn't have a fonkagram account");
+                }
+                var response12 = await _supabaseClient
                         .From<ContactDto>()
-                        .Where(n => n.ContacterId == hey1.Id && n.ContacteeId == hey2.Id)
+                        .Where(n => n.ContacterId == hey.Id && n.ContacteeId == hey2.Id)
+                        .Get();
+
+                // Check if the user profile exists
+                if (response12.Models.Count == 0)
+                {
+                    return NotFound("Not in Contact");
+                }
+
+                await _supabaseClient
+                        .From<ContactDto>()
+                        .Where(n => n.ContacterId == hey.Id && n.ContacteeId == hey2.Id)
                         .Delete();
 
                     return Ok("Deleted");
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
             }
             catch (Exception)
             {
@@ -250,102 +160,62 @@ namespace LiveChat.Controllers
             }
 
 
-        }
-
-        [HttpDelete("RemoveContact_Username"), Authorize]
-        public async Task<IActionResult> RemoveContact_Username(string UserName)
-        {
-            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
-            if (emailClaim == null)
-            {
-                return BadRequest("Invalid Token");
-            }
-
-            try
-            {
-                var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailClaim.ToString()&& n.Deleted==false).Get();
-
-                var Contactee = await _supabaseClient.From<UserProfiledto>()
-                    .Where(n => n.UserName == UserName && n.Deleted == false).Get();
-
-                try
-                {
-                    var hey1 = Contacter.Models.FirstOrDefault();
-
-                    var hey2 = Contactee.Models.FirstOrDefault();
-
-                    if (hey1 == null)
-                    {
-                        return BadRequest("Invalid Token");
-                    }
-
-                    if (hey2 == null)
-                    {
-                        return BadRequest("No user by sunch email");
-                    }
-
-                    await _supabaseClient
-                        .From<ContactDto>()
-                        .Where(n => n.ContacterId == hey1.Id && n.ContacteeId == hey2.Id)
-                        .Delete();
-
-                    return Ok("Deleted");
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
-            }
-            catch (Exception)
-            {
-                return BadRequest("No Connection, Please Try again");
-            }
         }
 
         [HttpGet("GetContacts"), Authorize]
         public async Task<IActionResult> GetContacts()
         {
-        var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
-        {
-            return BadRequest("Invalid Token");
-        }
-
-        try
-        {
-            var response = await _supabaseClient.From<Userdto>()
-                .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
-
+            {
+                return StatusCode(15, "Invalid Token");
+            }
+            var email = emailClaim.Value.Split(':')[0].Trim();
             try
             {
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email && n.Deleted == false)
+                    .Get();
+
+
                 var hey = response.Models.FirstOrDefault();
 
                 if (hey == null)
                 {
-                    return BadRequest("Invalid Token");
+                    return StatusCode(10, "Invalid Token");
                 }
+                Console.WriteLine("logged in");
 
-                try
-                {
-                    var responseGet = await _supabaseClient.From<ContactDto>()
+                var responseGet = await _supabaseClient.From<ContactDto>()
                         .Where(n => n.ContacterId == hey.Id)
-                        .Select("ContacteeId")
                         .Get();
 
-                    Array heyArray = responseGet.Models.ToArray();
+                    var heyArray = responseGet.Models.ToList();
+                
+                List<GetContact> allyouNeed = new List<GetContact>();
 
-                    return Ok(heyArray);
-                }
-                catch (Exception)
+                foreach (var user in heyArray)
                 {
-                    return BadRequest("No Connection for Getting Contacts");
-                }
-            }
-            catch (Exception)
-            {
-                return BadRequest("Problem when querying the database");
-            }
+                    var getProfile = await _supabaseClient.From<UserProfiledto>()
+                        .Where(n => n.UserId == user.ContacteeId)
+                        .Get();
+
+                    var getProfile2 = getProfile.Models.FirstOrDefault();
+                    GetContact xzz = new GetContact
+                    {
+                        Id = user.ContacteeId,
+                        Name = getProfile2.Name,
+                        LastName = getProfile2.LastName,
+                        Bio = getProfile2.Bio
+
+                    };
+
+                    allyouNeed.Add(xzz);
+                }    
+
+
+                return Ok(allyouNeed);
+                
         }
         catch (Exception)
         {
@@ -356,306 +226,193 @@ namespace LiveChat.Controllers
         [HttpGet("GetBlockedContacts"), Authorize]
         public async Task<IActionResult> GetBlockedContacts()
         {
-            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "PhoneNumber");
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
             {
-                return BadRequest("Invalid Token");
+                return StatusCode(15, "Invalid Token");
             }
-
+            var email = emailClaim.Value.Split(':')[0].Trim();
             try
             {
                 var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false).Get();
+                    .Where(n => n.Email == email && n.Deleted == false)
+                    .Get();
 
 
-                try
+                var hey = response.Models.FirstOrDefault();
+
+                if (hey == null)
                 {
-                    var hey = response.Models.FirstOrDefault();
+                    return StatusCode(10, "Invalid Token");
+                }
 
-                    if (hey == null)
-                    {
-                        return BadRequest("Invalid Token");
-                    }
 
-                    try
-                    {
-                        var responseGet = await _supabaseClient.From<ContactDto>()
+                var responseGet = await _supabaseClient.From<ContactDto>()
                             .Where(n => n.ContacterId == hey.Id && n.Block ==true)
-                            .Select("ContacteeId")
                             .Get();
 
-                        Array heyArray = responseGet.Models.ToArray();
+                        var heyArray = responseGet.Models.ToList();
 
                         return Ok(heyArray);
-                    }
-                    catch (Exception)
-                    {
-                        return BadRequest("No Connection for Getting Contacts");
-                    }
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
+                    
             }
             catch (Exception)
             {
                 return BadRequest("No Connection, Please Try again");
             }
         }
-        [HttpPut("BlockContact_Email"), Authorize]
-        public async Task<IActionResult> BlockContact_Email(string emailPara)
-        {
-            var phoneNumberClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
-            if (phoneNumberClaim == null)
-            {
-                return BadRequest("Invalid Token");
-            }
-
-            try
-            {
-                var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == phoneNumberClaim.ToString()&& n.Deleted==false).Get();
-
-                var Contactee = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailPara && n.Deleted==false).Get();
-
-                try
-                {
-                    var hey1 = Contacter.Models.FirstOrDefault();
-
-                    var hey2 = Contactee.Models.FirstOrDefault();
-
-                    if (hey1 == null)
-                    {
-                        return BadRequest("Invalid Token");
-                    }
-
-                    if (hey2 == null)
-                    {
-                        return BadRequest("Already Deleted Account or email Invalid");
-                    }
-
-                    await _supabaseClient
-                        .From<ContactDto>()
-                        .Where(n => n.ContacterId == hey1.Id && n.ContacteeId == hey2.Id)
-                        .Set(u => u.Block, true)
-                        .Update();
-                    var responseHey = await _supabaseClient
-                        .From<ContactDto>()
-                        .Where(n => n.ContacteeId == hey1.Id && n.ContacterId == hey2.Id)
-                        .Get();
-                    if (responseHey.Models.Count==0)
-                    {
-                        return Ok("Blocked");
-                    }
-                    await _supabaseClient
-                        .From<ContactDto>()
-                        .Where(n => n.ContacteeId == hey1.Id && n.ContacterId == hey2.Id)
-                        .Set(u => u.Blocked, true)
-                        .Update();
-
-                    return Ok("Blocked");
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
-            }
-            catch (Exception)
-            {
-                return BadRequest("No Connection, Please Try again");
-            }
-        }
-
-        [HttpPut("BlockAcontact_userName"), Authorize]
-        public async Task<IActionResult> BlockAcontact_userName(string UserName)
+        [HttpPut("BlockContact"), Authorize]
+        public async Task<IActionResult> BlockContact([FromBody] long idPara)
         {
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
             {
-                return BadRequest("Invalid Token");
+                return StatusCode(15, "Invalid Token");
             }
-
+            var email = emailClaim.Value.Split(':')[0].Trim();
             try
             {
-                var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailClaim.ToString()&&n.Deleted==false).Get();
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email && n.Deleted == false)
+                    .Get();
 
-                var Contactee = await _supabaseClient.From<UserProfiledto>()
-                    .Where(n => n.UserName == UserName && n.Deleted==false).Get();
 
-                try
+                var hey = response.Models.FirstOrDefault();
+
+                if (hey == null)
                 {
-                    var hey1 = Contacter.Models.FirstOrDefault();
+                    return StatusCode(10, "Invalid Token");
+                }
+                if (hey.Id == idPara)
+                {
+                    return BadRequest("YOu can't block yourself");
+                }
 
-                    var hey2 = Contactee.Models.FirstOrDefault();
+                var Contactee = await _supabaseClient.From<ContactDto>()
+                    .Where(n => n.ContacterId == hey.Id && n.ContacteeId == idPara)
+                    .Get();
 
-                    if (hey1 == null)
+                                  
+                                   
+                    if (Contactee.Models.Count == 0)
                     {
-                        return BadRequest("Invalid Token");
+                        return BadRequest("No such Contact in your Contact list with the provided id");
                     }
 
-                    if (hey2 == null)
-                    {
-                        return BadRequest("Invalid Username or Contact Deleted");
-                    }
+                var firstBlock = await _supabaseClient
+                    .From<ContactDto>()
+                    .Where(n => n.ContacterId == hey.Id && n.ContacteeId == idPara)
+                    .Single();
+                if (firstBlock.Block == true)
+                {
+                    return BadRequest("Already Blocked");
+                }
 
-                    await _supabaseClient
+                firstBlock.Block = true; 
+                await firstBlock.Update<ContactDto>();
+
+                var responseHey = await _supabaseClient
                         .From<ContactDto>()
-                        .Where(n => n.ContacterId == hey1.Id && n.ContacteeId == hey2.Id)
-                        .Set(u => u.Block, true)
-                        .Update();
-                    var responseHey = await _supabaseClient
-                        .From<ContactDto>()
-                        .Where(n => n.ContacteeId == hey1.Id && n.ContacterId == hey2.Id)
+                        .Where(n => n.ContacteeId == hey.Id && n.ContacterId == idPara)
                         .Get();
-                    if (responseHey.Models.Count == 0)
+                Console.WriteLine(responseHey.Models.Count);
+                Console.WriteLine(idPara);
+
+                if (responseHey.Models.Count==0)
                     {
                         return Ok("Blocked");
                     }
-                    await _supabaseClient
-                        .From<ContactDto>()
-                        .Where(n => n.ContacteeId == hey1.Id && n.ContacterId == hey2.Id)
-                        .Set(u => u.Blocked, true)
-                        .Update();
+                var secondBLock = await _supabaseClient
+                    .From<ContactDto>()
+                    .Where(n => n.ContacteeId == hey.Id && n.ContacterId == idPara)
+                    .Single();
+                
+                secondBLock.Blocked = true;
 
-                    return Ok("Blocked");
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
+                await secondBLock.Update<ContactDto>();
+                        
+                return Ok("Blocked");
+                
             }
             catch (Exception)
             {
                 return BadRequest("No Connection, Please Try again");
             }
         }
-
-        [HttpPut("UnBlockAcontact_userName"), Authorize]
-        public async Task<IActionResult> UnBlockAcontact_userName(string UserName)
+                        
+        [HttpPut("UnBlockAcontact"), Authorize]
+        public async Task<IActionResult> UnBlockAcontact_email([FromBody] long idPara)
         {
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
             {
-                return BadRequest("Invalid Token");
+                return StatusCode(15, "Invalid Token");
             }
-
+            var email = emailClaim.Value.Split(':')[0].Trim();
             try
             {
-                var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailClaim.ToString()&&n.Deleted==false).Get();
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email && n.Deleted == false)
+                    .Get();
 
-                var Contactee = await _supabaseClient.From<UserProfiledto>()
-                    .Where(n => n.UserName == UserName).Get();
 
-                try
+                var hey = response.Models.FirstOrDefault();
+
+                if (hey == null)
                 {
-                    var hey1 = Contacter.Models.FirstOrDefault();
+                    return StatusCode(10, "Invalid Token");
+                }
+                if(hey.Id == idPara)
+                {
+                    return BadRequest("YOu can't unblock yourself");
+                }
 
-                    var hey2 = Contactee.Models.FirstOrDefault();
+                var Contactee = await _supabaseClient.From<ContactDto>()
+                    .Where(n => n.ContacterId == hey.Id && n.ContacteeId == idPara)
+                    .Get();
 
-                    if (hey1 == null)
-                    {
-                        return BadRequest("Invalid Token");
-                    }
+                if (Contactee.Models.Count == 0)
+                {
+                    return BadRequest("No such Contact in your Contact list with the provided id");
+                }
+                
+                var firstBlock = await _supabaseClient
+                    .From<ContactDto>()
+                    .Where(n => n.ContacterId == hey.Id && n.ContacteeId == idPara)
+                    .Single();
+                if (firstBlock.Block == false)
+                {
+                    return BadRequest("Not blokced in the first place");
+                }
 
-                    if (hey2 == null)
-                    {
-                        return BadRequest("Invalid Email");
-                    }
+                firstBlock.Block = false;
+                await firstBlock.Update<ContactDto>();
 
-                    await _supabaseClient
+                Console.WriteLine("two");
+
+                var responseHey = await _supabaseClient
                         .From<ContactDto>()
-                        .Where(n => n.ContacterId == hey1.Id && n.ContacteeId == hey2.Id)
-                        .Set(u => u.Block, false)
-                        .Update();
-                    var responseHey = await _supabaseClient
-                        .From<ContactDto>()
-                        .Where(n => n.ContacteeId == hey1.Id && n.ContacterId == hey2.Id)
+                        .Where(n => n.ContacteeId == hey.Id && n.ContacterId == idPara)
                         .Get();
-                    if (responseHey.Models.Count == 0)
+                
+                if (responseHey.Models.Count == 0)
                     {
-                        return Ok("Blocked");
+                        return Ok("UnBlocked");
                     }
-                    await _supabaseClient
-                        .From<ContactDto>()
-                        .Where(n => n.ContacteeId == hey1.Id && n.ContacterId == hey2.Id)
-                        .Set(u => u.Blocked, false)
-                        .Update();
+                
 
-                    return Ok("Blocked");
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
-            }
-            catch (Exception)
-            {
-                return BadRequest("No Connection, Please Try again");
-            }
-        }
+                var secondBLock = await _supabaseClient
+                    .From<ContactDto>()
+                    .Where(n => n.ContacteeId == hey.Id && n.ContacterId == idPara)
+                    .Single();
+                secondBLock.Blocked = false;
 
-        [HttpPut("UnBlockAcontact_Email"), Authorize]
-        public async Task<IActionResult> UnBlockAcontact_email(string emailPara)
-        {
-            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
-            if (emailClaim == null)
-            {
-                return BadRequest("Invalid Token");
-            }
+                await secondBLock.Update<ContactDto>();
 
-            try
-            {
-                var Contacter = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailClaim.ToString()&&n.Deleted==false).Get();
+                
 
-                var Contactee = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == emailPara).Get();
-
-                try
-                {
-                    var hey1 = Contacter.Models.FirstOrDefault();
-
-                    var hey2 = Contactee.Models.FirstOrDefault();
-
-                    if (hey1 == null)
-                    {
-                        return BadRequest("Invalid Token");
-                    }
-
-                    if (hey2 == null)
-                    {
-                        return BadRequest("Invalid Email");
-                    }
-
-                    await _supabaseClient
-                        .From<ContactDto>()
-                        .Where(n => n.ContacterId == hey1.Id && n.ContacteeId == hey2.Id)
-                        .Set(u => u.Block, false)
-                        .Update();
-                    var responseHey = await _supabaseClient
-                        .From<ContactDto>()
-                        .Where(n => n.ContacteeId == hey1.Id && n.ContacterId == hey2.Id)
-                        .Get();
-                    if (responseHey.Models.Count == 0)
-                    {
-                        return Ok("Blocked");
-                    }
-                    await _supabaseClient
-                        .From<ContactDto>()
-                        .Where(n => n.ContacteeId == hey1.Id && n.ContacterId == hey2.Id)
-                        .Set(u => u.Blocked, false)
-                        .Update();
-
-                    return Ok("Blocked");
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
+                return Ok("UnBlocked");
+                
             }
             catch (Exception)
             {
@@ -664,51 +421,74 @@ namespace LiveChat.Controllers
         }
 
         [HttpGet("SearchContacts"), Authorize]
-        public async Task<IActionResult> SearchUser(Query query)
+        public async Task<IActionResult> SearchUser([FromQuery] string query)
         {
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
             {
-                return BadRequest("Invalid Token");
+                return StatusCode(15, "Invalid Token");
             }
-
+            var email = emailClaim.Value.Split(':')[0].Trim();
             try
             {
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email && n.Deleted == false)
+                    .Get();
+
+
+                var hey = response.Models.FirstOrDefault();
+
+                if (hey == null)
+                {
+                    return StatusCode(10, "Invalid Token");
+                }
+                Console.WriteLine("logged in");
+                var nameQuery = $"%{query}%";
                 // Retrieve user record(s) based on ContacteeId
-                var userResponse = await _supabaseClient
-                    .From<UserProfiledto>()
-                    .Where(a => a.Name.Contains(query.SerachQuery))
-                    .Select("UserId") // Select only the name column
+                var userResponse = await _supabaseClient.From<UserProfiledto>()
+                    .Filter("Name",Postgrest.Constants.Operator.ILike,nameQuery)
                     .Get();
 
                 // Extract user names from the userResponse
-                var userIds = userResponse.Models.Select(b => b.UserId);
+                var userProfile = userResponse.Models.ToList();
+                
+                List<SearchContact> allyouNeed = new List<SearchContact>();
 
-                // Now you can use userNames to filter contacts based on name
-                var response = await _supabaseClient
-                    .From<ContactDto>()
-                    .Where(contact => userIds.Contains(contact.ContacteeId)) // Filter contacts based on user IDs
-                    .Select("ContacteeId") // Select all columns from ContactDto
-                    .Get();
-
-
-                try
+                foreach (var user in userProfile)
                 {
-                    Array hey = response.Models.ToArray();
-
-                    if (hey == null)
+                    var getProfile = await _supabaseClient.From<ContactDto>()
+                        .Where(n=> n.ContacterId == hey.Id && n.ContacteeId == user.UserId)
+                        .Get();
+                    if (getProfile.Models.Count == 1)
                     {
-                        return BadRequest("No Search Results");
+                        var getEmail = await _supabaseClient.From<Userdto>()
+                            .Where(n => n.Id == user.UserId && n.Deleted == false)
+                            .Get();
+                        var getEmail1 = getEmail.Models.FirstOrDefault();
+                        if (getEmail1 == null)
+                        {
+                            continue;
+                        }
+
+                    
+                        SearchContact xzz = new SearchContact
+                        {
+                            Id = user.UserId,
+                            Name = user.Name,
+                            LastName = user.LastName,
+                            Email = getEmail1.Email
+
+                        };
+
+                        allyouNeed.Add(xzz);
                     }
 
-                    // return the searched users Id.
-                    return Ok(hey);
+                    
+                }
+                return Ok(allyouNeed);
 
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
+
+                
             }
             catch (Exception)
             {

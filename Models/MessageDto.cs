@@ -19,7 +19,15 @@ public class MessageDto : BaseModel
         [Column("Status")] public string? Status { get; set; } = "";
 
         [Column("MessageType")] public string MessageType { get; set; } = "";
+        
+        [Column("Edited")] public bool Edited { get; set; } = false;
 
+        [Column("IsAudio")] public bool IsAudio { get; set; }
+
+        [Column("IsImage")] public bool IsImage { get; set; }
+
+        [Column("New")] public bool New {  get; set; } = true;
+ 
         [ForeignKey("SenderId")] public long SenderId { get; set; }
         
         [ForeignKey("RecpientId")] public long RecpientId { get; set; }
@@ -27,6 +35,10 @@ public class MessageDto : BaseModel
         [Column("Deleted")] public bool Deleted { get; set; }
 
         [ForeignKey("ConvId")] public long ConvId { get; set; }
+
+        [ForeignKey("Deleteer")] public long Deleteer { get; set; }
+
+        
 
 
 

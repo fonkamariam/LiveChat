@@ -14,6 +14,10 @@ using Supabase.Interfaces;
 using Microsoft.Extensions.Configuration;
 using System.Net;
 using System.Net.Mail;
+using System;
+using System.Collections.Generic;
+using Newtonsoft.Json;
+using System.Linq;
 
 namespace LiveChat.Controllers
 {
@@ -56,8 +60,10 @@ namespace LiveChat.Controllers
                 .SetBasePath(Directory.GetCurrentDirectory()) // Set the base path where secrets.json is located
                 .AddJsonFile("Secret/secret.json", optional: true, reloadOnChange: true)
                 .Build();
-            string fromEmail = secretsConfig["Email:EmailAccount"];
-            string password = secretsConfig["Email:EmailPassword"];
+            string fromEmail = "fonkagramm@gmail.com";
+            string password = "yxalycsniggpnjlk";
+            Console.WriteLine(fromEmail);
+            Console.WriteLine(password);
 
             MailMessage message = new MailMessage();
 
@@ -78,13 +84,13 @@ namespace LiveChat.Controllers
                 smtpClient.Send(message);
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return false;
             }
         }
 
-        private string CreateToken(string emailPara)
+        private string CreateToken(string emailPara,long idPara)
         {
             var secretsConfig = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory()) // Set the base path where secrets.json is located
@@ -92,7 +98,8 @@ namespace LiveChat.Controllers
                 .Build();
             var claims = new[]
             {
-                new Claim("Email",emailPara)
+                new Claim("Email",emailPara),
+                new Claim("UserId",idPara.ToString())
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretsConfig["AppSettings:Token"]));
@@ -102,7 +109,7 @@ namespace LiveChat.Controllers
             var token = new JwtSecurityToken(
                 claims: claims,
 
-                expires: DateTime.Now.AddMinutes(30),
+                expires: DateTime.Now.AddMinutes(59),
                 signingCredentials: cred
             );
 
@@ -150,7 +157,7 @@ namespace LiveChat.Controllers
                     return StatusCode(30,"your Refresh token has expired, sign in again");
                 }
 
-                string newToken = CreateToken(hey.Email);
+                string newToken = CreateToken(hey.Email,hey.Id);
 
                 var result = new
                 {
@@ -170,7 +177,6 @@ namespace LiveChat.Controllers
 
 
         }
-
 
         [HttpPost("login")]
         public async Task<IActionResult> Loginn([FromBody] UserLogin person)
@@ -193,9 +199,8 @@ namespace LiveChat.Controllers
                         return StatusCode(20,"Wrong Password");
                     }
 
-                    string token = CreateToken(hey.Email);
+                    string token = CreateToken(hey.Email,hey.Id);
                     var refreshToken = GenerateRefreshToken();
-                
                 var responseUpdate = await _supabaseClient.From<Userdto>()
                             .Where(n => n.Email == person.Email)
                             .Single();
@@ -205,24 +210,130 @@ namespace LiveChat.Controllers
                 responseUpdate.Token_Expiry = refreshToken.Expires;
                 
                 await responseUpdate.Update<Userdto>();
+                
+                var getProfile = await _supabaseClient.From<UserProfiledto>()
+                    .Where(n => n.UserId == hey.Id && n.Deleted==false)
+                    .Get();
+                
+                if (getProfile == null) { return BadRequest("Invaild UserName"); }
+                var hereProfile = getProfile.Models.FirstOrDefault();
 
-
+                List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(hereProfile.ProfilePic);
+                //allProfilePic.Reverse();
+                //List<string> reversedProfilePic = allProfilePic.AsEnumerable().Reverse().ToList();
+                if (allProfilePic != null)
+                {
+                    allProfilePic.Reverse();
+                   // Console.WriteLine("REversed HHHH");
+                }
                 var result = new
                     {
                         Id = hey.Id,
                         Token = token,
                         RefreshToken = refreshToken.Token,
-                        RefreshTokenExpiry = refreshToken.Expires
+                        RefreshTokenExpiry = refreshToken.Expires,
+                        Name = hereProfile.Name,
+                        LastName=hereProfile.LastName,
+                        Bio = hereProfile.Bio,
+                        Dark = hey.Dark,
+                        ProfilePicture = allProfilePic
 
                 };
+                var updateOnline = await _supabaseClient.From<UserProfiledto>()
+                    .Where(n => n.UserId == hey.Id && n.Deleted == false)
+                    .Single();
+                updateOnline.Status = "true";
+                await updateOnline.Update<UserProfiledto>();
+
                 
 
                 return Ok(result);
                
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return StatusCode(30,"No Connection, Please Try again");
+            }
+        }
+
+        [HttpPut("logout"),Authorize]
+        public async Task<IActionResult> LogOut()
+        {
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
+            {
+                return StatusCode(15, "Invalid Token");
+            }
+            var email = emailClaim.Value.Split(':')[0].Trim();
+            try
+            {
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email && n.Deleted == false)
+                    .Get();
+
+
+                var hey = response.Models.FirstOrDefault();
+
+                if (hey == null)
+                {
+                    return StatusCode(10, "Invalid Token");
+                }
+
+                var logoutHandle = await _supabaseClient.From<UserProfiledto>()
+                 .Where(n => n.UserId == hey.Id)
+                 .Single();
+                logoutHandle.Status = "false";
+                logoutHandle.LastSeen = DateTime.UtcNow;
+
+                await logoutHandle.Update<UserProfiledto>();
+                return Ok("Logged Out and LastSeen Set");
+
+
+            }
             catch (Exception)
             {
-                return StatusCode(30,"No Connection, Please Try again");
+                return BadRequest("No Connection, Please Try again");
+            }
+        }
+        
+        [HttpPut("virtualLogin"), Authorize]
+        public async Task<IActionResult> VirtualLogin()
+        {
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
+            {
+                return StatusCode(15, "Invalid Token");
+            }
+            var email = emailClaim.Value.Split(':')[0].Trim();
+            try
+            {
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email && n.Deleted == false)
+                    .Get();
+
+
+                var hey = response.Models.FirstOrDefault();
+
+                if (hey == null)
+                {
+                    return StatusCode(10, "Invalid Token");
+                }
+
+                var logoutHandle = await _supabaseClient.From<UserProfiledto>()
+                 .Where(n => n.UserId == hey.Id)
+                 .Single();
+                logoutHandle.Status = "true";
+                logoutHandle.LastSeen = DateTime.UtcNow;
+
+                await logoutHandle.Update<UserProfiledto>();
+                return Ok("Logged in Virtually");
+
+
+            }
+            catch (Exception)
+            {
+                return BadRequest("No Connection, Please Try again");
             }
         }
 
@@ -329,19 +440,35 @@ namespace LiveChat.Controllers
                 
                 var final1 = final.Models.First();
 
-                string token = CreateToken(userdto.Email); 
+                string token = CreateToken(userdto.Email,userdto.Id); 
                 var result = new
                         {
                             Id=final1.Id,
                             Token = token,
                             RefreshToken = refreshToken.Token,
-                            RefreshTokenExpiry= refreshToken.Expires
+                            RefreshTokenExpiry= refreshToken.Expires,
+                            Name = person.Name
                 };
                 
                 await _supabaseClient.From<RegisterVertifyDto>()
                     .Where(a => a.Email == person.Email)
                     .Delete();
-                
+                var userName = new UserProfiledto
+                {
+                    UserId = final1.Id,
+                    Name = person.Name,
+                    Status = "true"
+
+                };
+                Console.WriteLine("About to insterted Name in UserProfile");
+                await _supabaseClient.From<UserProfiledto>().Insert(userName);
+
+
+
+                Console.WriteLine("Insterted Name in UserProfile");
+
+
+
                 return Ok(result);
                 
             }
@@ -351,6 +478,7 @@ namespace LiveChat.Controllers
             }
         }
 
+                
         [HttpPost("ForgotPassword")]
         public async Task<IActionResult> ForgotPassword([FromBody]string email)
         {
@@ -394,6 +522,7 @@ namespace LiveChat.Controllers
             }
         }
 
+        
         [HttpPost("UpdatePasswordThroughCode")]
         public async Task<IActionResult> UpdatePasswordThroughCode( [FromBody] NewPassword newPassword)
         {
@@ -436,6 +565,7 @@ namespace LiveChat.Controllers
         }
 
         // Change Password after logged in
+        
         [HttpPost("ChangePassword"), Authorize]
         public async Task<IActionResult> ChangePassword( [FromBody] ChangePassword changePassword)
         {
@@ -534,6 +664,7 @@ namespace LiveChat.Controllers
             }
         }
 
+
         [HttpDelete("DeleteAccount"), Authorize]
         public async Task<IActionResult> DeleteAccount()
         {
@@ -558,7 +689,7 @@ namespace LiveChat.Controllers
                 }
 
                 var responseUpdate = await _supabaseClient.From<Userdto>()
-                 .Where(n => n.Email == email)
+                 .Where(n => n.Id == hey.Id)
                  .Single();
                 
                 responseUpdate.Email = responseUpdate.Email + "@" + responseUpdate.Id;
@@ -566,6 +697,13 @@ namespace LiveChat.Controllers
                 responseUpdate.Deleted = true;
 
                 await responseUpdate.Update<Userdto>();
+                // Delete UserProfile
+                var responseUpdateProfile = await _supabaseClient.From<UserProfiledto>()
+                 .Where(n => n.UserId == hey.Id)
+                 .Single();
+                responseUpdateProfile.Deleted = true;
+
+                await responseUpdateProfile.Update<UserProfiledto>();
 
                 return Ok("Succssefully Deleted User!");
 
@@ -577,39 +715,78 @@ namespace LiveChat.Controllers
             }
         }
 
-        [HttpGet("SearchUser"), Authorize]
-        public async Task<IActionResult> SearchUser(Query query)
-        {
-            var EmailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
-            if (EmailClaim == null)
-            {
-                return BadRequest("Invalid Token");
-            }
 
+        [HttpGet("SearchUser"), Authorize]
+        public async Task<IActionResult> SearchUser([FromQuery] string query)
+        {
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
+            {
+                return StatusCode(15, "Invalid Token");
+            }
+            var email = emailClaim.Value.Split(':')[0].Trim();
             try
             {
-                var response = await _supabaseClient
-                    .From<UserProfiledto>()
-                    .Where(n => (n.UserName.Contains(query.SerachQuery))&& n.Deleted==false)
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email && n.Deleted == false)
                     .Get();
 
-                try
-                {
-                    Array hey = response.Models.ToArray();
 
-                    if (hey == null)
+                var hey = response.Models.FirstOrDefault();
+
+                if (hey == null)
+                {
+                    return StatusCode(10, "Invalid Token");
+                }
+                List<SearchEmail> allyouNeed = new List<SearchEmail>();
+
+                if (query == "." || query == "@")
+                {
+                    return Ok(allyouNeed);
+                }
+                
+                var emailPrefix = $"%{query}%";
+                var queryResponse = await _supabaseClient
+                    .From<Userdto>()
+                    .Filter("Email",Postgrest.Constants.Operator.ILike,emailPrefix)
+                    .Get();
+                
+               
+                 var searchResult = queryResponse.Models.ToList();
+                
+                foreach (var user in searchResult)
+                {
+                    var getProfile = await _supabaseClient.From<UserProfiledto>()
+                        .Where(n => n.UserId == user.Id)
+                        .Get();
+                    var getProfile2 = getProfile.Models.FirstOrDefault();
+                    List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getProfile2.ProfilePic);
+                    //allProfilePic.Reverse();
+                    //List<string> reversedProfilePic = allProfilePic.AsEnumerable().Reverse().ToList();
+                    if (allProfilePic != null)
                     {
-                        return BadRequest("No Search Results");
+                        allProfilePic.Reverse();
+                       // Console.WriteLine("REversed HHHH");
                     }
 
-                    // update Password
-                    return Ok(hey);
+                    SearchEmail xzz = new SearchEmail
+                    {
+                        Id = user.Id,
+                        Name = getProfile2.Name,
+                        LastName = getProfile2.LastName,
+                        Email = user.Email,
+                        ProfilePicSearch= allProfilePic,
+                        Status = getProfile2.Status,
+                        LastSeen = getProfile2.LastSeen,
+                        Bio = getProfile2.Bio
+                        
+                    };
 
+                    allyouNeed.Add(xzz);
                 }
-                catch (Exception)
-                {
-                    return BadRequest("Problem when querying the database");
-                }
+                return Ok (allyouNeed);
+
+                
             }
             catch (Exception)
             {
@@ -617,6 +794,42 @@ namespace LiveChat.Controllers
             }
 
         }
-        
+
+        [HttpPut("LightDark"), Authorize]
+        public async Task<IActionResult> LightDark([FromQuery] bool value)
+        {
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
+            {
+                return StatusCode(15, "Invalid Token");
+            }
+            var email = emailClaim.Value.Split(':')[0].Trim();
+            try
+            {
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email && n.Deleted == false)
+                    .Get();
+                var hey = response.Models.FirstOrDefault();
+
+                if (hey == null)
+                {
+                    return StatusCode(10, "Invalid Token");
+                }
+
+
+                hey.Dark = value;
+                await hey.Update<Userdto>();
+
+
+
+                return Ok("Apperance Changed successfully");
+
+            }
+            catch
+            {
+                return BadRequest("Connection Problem");
+            }
+        }
+
     }
 }

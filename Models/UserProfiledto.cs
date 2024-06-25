@@ -1,11 +1,16 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic;
+using System.Text.Json;
+
 namespace LiveChat.Models;
+
+using Newtonsoft.Json;
 using Postgrest.Attributes;
 using Postgrest.Models;
+using System.Text.Json.Serialization;
 
-
-    [Table("UserProfile")]
+[Table("UserProfile")]
 public class UserProfiledto:BaseModel
     {
 
@@ -24,6 +29,15 @@ public class UserProfiledto:BaseModel
     [Column("LastName")] public string? LastName { get; set; }
 
     [Column("Deleted")] public bool Deleted { get; set; } = false;
+
+    [Column("Status")] public string Status { get; set; } = "false";
+
+    
+    [Column("LastSeen")] public DateTime LastSeen { get; set; } = DateTime.UtcNow;
+
+    [Column("ProfilePic")] public string ProfilePic { get; set; }
+
+    
 
     }
 
