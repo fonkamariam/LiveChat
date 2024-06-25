@@ -56,38 +56,49 @@ namespace LiveChat.Controllers
 
         private bool SendEmail(string ToEmail, int Code)
         {
-            var secretsConfig = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory()) // Set the base path where secrets.json is located
-                .AddJsonFile("Secret/secret.json", optional: true, reloadOnChange: true)
-                .Build();
-            string fromEmail = "fonkagramm@gmail.com";
-            string password = "yxalycsniggpnjlk";
-            Console.WriteLine(fromEmail);
-            Console.WriteLine(password);
-
-            MailMessage message = new MailMessage();
-
-            message.From = new MailAddress(fromEmail);
-            message.Subject = "Vertification Code";
-            message.To.Add(new MailAddress(ToEmail));
-            message.Body = $"Your Verticfication Code:{Code}.";
-
-
-            var smtpClient = new SmtpClient("smtp.gmail.com")
-            {
-                Port = 587,
-                Credentials = new NetworkCredential(fromEmail, password),
-                EnableSsl = true,
-            };
             try
             {
+                Console.WriteLine("Starting to send email...");
+
+                string fromEmail = "fonkagram@outlook.com"; // Replace with your Outlook email
+                string password = "NandToTetris2023"; // Replace with your Outlook email password
+                string toEmail = "fbesrat11@gmail.com"; // Replace with recipient's email
+
+                MailMessage message = new MailMessage();
+                message.From = new MailAddress(fromEmail);
+                message.Subject = "Fonkagram: Verification Code";
+                message.To.Add(new MailAddress(toEmail));
+                message.Body = $"Your Verticfication Code:{Code}.";
+
+                SmtpClient smtpClient = new SmtpClient("smtp.office365.com")
+                {
+                    Port = 587,
+                    Credentials = new NetworkCredential(fromEmail, password),
+                    EnableSsl = true,
+                };
+
                 smtpClient.Send(message);
+
+                Console.WriteLine("Message Sent");
                 return true;
+            }
+            catch (SmtpException ex)
+            {
+                Console.WriteLine($"SMTP Error: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+                    return false;
+                }
+                Console.WriteLine("Please check your network connection, firewall settings, and email server settings.");
+                return false;
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"General Error: {ex.Message}");
                 return false;
             }
+
         }
 
         private string CreateToken(string emailPara,long idPara)
@@ -109,7 +120,7 @@ namespace LiveChat.Controllers
             var token = new JwtSecurityToken(
                 claims: claims,
 
-                expires: DateTime.Now.AddMinutes(59),
+                expires: DateTime.Now.AddMinutes(120),
                 signingCredentials: cred
             );
 
