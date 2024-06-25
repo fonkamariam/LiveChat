@@ -255,7 +255,7 @@ namespace LiveChat.Controllers
                     .Where(n => n.UserId == hey.Id && n.Deleted == false)
                     .Single();
                 //var getArrayModel = getArray.Models.FirstOrDefault();
-                if (getArrayModel.ProfilePic == "")
+                if (getArrayModel.ProfilePic == "" || getArrayModel.ProfilePic == null)
                 {
                     Console.WriteLine("Empty ARRAY PROFILE PIC");
 
