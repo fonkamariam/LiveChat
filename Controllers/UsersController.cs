@@ -201,13 +201,13 @@ namespace LiveChat.Controllers
 
                     if (hey == null)
                     {
-                        return StatusCode(10,"Email Invalid");
+                        return BadRequest("Email Invalid");
                     }
                 
 
                 if (!VertifyPasswordHash(person.Password, hey.PasswordHash, hey.PasswordSalt))
                     {
-                        return StatusCode(20,"Wrong Password");
+                        return Unauthorized("Wrong Password");
                     }
 
                     string token = CreateToken(hey.Email,hey.Id);
@@ -263,8 +263,7 @@ namespace LiveChat.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
-                return StatusCode(30,"No Connection, Please Try again");
+                return StatusCode(500,"No Connection, Please Try again");
             }
         }
 
@@ -361,7 +360,7 @@ namespace LiveChat.Controllers
                 var hey = response.Models.Count;
                 if (hey == 1)
                 {
-                    return StatusCode(10,"Email Invalid,Email already in use");
+                    return BadRequest("Email Invalid,Email already in use");
                 }
                
                 Random random = new Random(); 
@@ -371,7 +370,7 @@ namespace LiveChat.Controllers
                 bool x = SendEmail(emailPara, code);
                 if (x == false)
                 {
-                    return StatusCode(20,"Couldn't Send email,Try again");
+                    return Unauthorized("Couldn't Send email,Try again");
                 }
                 RegisterVertifyDto registerVertify = new RegisterVertifyDto
                         {
@@ -404,7 +403,7 @@ namespace LiveChat.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(50, "Connection Problem");
+                return StatusCode(500, "Connection Problem");
             }
         }
 
@@ -418,14 +417,14 @@ namespace LiveChat.Controllers
                     .Get();
                 if (verifyNo.Models.Count == 0)
                 {
-                    return StatusCode(10,"Incorrect Verification Number");
+                    return BadRequest("Incorrect Verification Number");
                 }
 
                 var checkVerify = verifyNo.Models.First();
                 if (checkVerify.VReg_Expiry < DateTime.UtcNow)
                 {
                     
-                    return StatusCode(20,"Verification Number Expired,Try again");
+                    return Unauthorized("Verification Number Expired,Try again");
                 }
                 
                 // Register the User now 
@@ -489,7 +488,7 @@ namespace LiveChat.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(30,"Can't connect to server");
+                return StatusCode(500,"Can't connect to server");
             }
         }
 
@@ -504,7 +503,7 @@ namespace LiveChat.Controllers
 
                 if (response.Models.Count == 0)
                 {
-                    return StatusCode(10, "Invalid Email, No Email found");
+                    return BadRequest("Invalid Email, No Email found");
                 }
 
 
@@ -516,7 +515,7 @@ namespace LiveChat.Controllers
                 bool x = SendEmail(email, code);
                 if (x == false)
                 {
-                    return StatusCode(20,"Couldn't Send email,Try again");
+                    return Unauthorized("Couldn't Send email,Try again");
                 }
 
                 // update vertification Database
@@ -533,7 +532,7 @@ namespace LiveChat.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(30,"No Connection, Please Try again");
+                return StatusCode(500,"No Connection, Please Try again");
             }
         }
 
@@ -547,7 +546,7 @@ namespace LiveChat.Controllers
 
                 if (response.Models.Count == 0)
                 {
-                    return StatusCode(10, "Invalid Email, No Email found");
+                    return BadRequest("Invalid Email, No Email found");
                 }
 
                 var hey = response.Models.First();
@@ -569,13 +568,13 @@ namespace LiveChat.Controllers
                         
                     }
 
-                return StatusCode(20,"Invalid , either code exipred or lying!");
+                return Unauthorized("Invalid , either code exipred or lying!");
 
                
             }
             catch (Exception)
             {
-                return BadRequest("No Connection, Please Try again");
+                return StatusCode(500,"No Connection, Please Try again");
             }
         }
 
@@ -587,7 +586,7 @@ namespace LiveChat.Controllers
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
             {
-                return StatusCode(15, "Invalid Token");
+                return Unauthorized("Invalid Token");
             }
             var email = emailClaim.Value.Split(':')[0].Trim();
             try
