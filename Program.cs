@@ -25,8 +25,8 @@ builder.Services.AddControllers()
 builder.Services.AddSignalR().AddNewtonsoftJsonProtocol();
 
 // Add services to the container.
-builder.Services.AddControllers();
 builder.Services.AddSignalR().AddNewtonsoftJsonProtocol();
+
 var secretsConfig = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory()) // Set the base path where secrets.json is located
     .AddJsonFile("Secret/secret.json", optional: true, reloadOnChange: true)
@@ -34,6 +34,7 @@ var secretsConfig = new ConfigurationBuilder()
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 builder.Services.AddScoped<Supabase.Client>(provider =>
 {
     var supabaseUrl = secretsConfig["Supabase:SupabaseUrl"];
@@ -54,7 +55,6 @@ builder.Services.AddCors(options =>
             .WithOrigins("https://fonkagram.netlify.app/")
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .SetIsOriginAllowed((host)=>true)
             .AllowCredentials());
 });
 // Merge the contents of secrets.json into the configuration
@@ -128,9 +128,10 @@ else
 }
 
 
+app.UseRouting();
+
 app.UseCors("AllowReactApp"); // Use the CORS policy
 app.UseAuthentication();
-app.UseRouting();
 app.MapControllers();
 app.UseAuthorization();
 app.UseEndpoints(endpoints => {
