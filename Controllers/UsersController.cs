@@ -62,12 +62,12 @@ namespace LiveChat.Controllers
 
                 string fromEmail = "fonkagram@outlook.com"; // Replace with your Outlook email
                 string password = "NandToTetris2023"; // Replace with your Outlook email password
-                string toEmail = "fbesrat11@gmail.com"; // Replace with recipient's email
+                
 
                 MailMessage message = new MailMessage();
                 message.From = new MailAddress(fromEmail);
                 message.Subject = "Fonkagram: Verification Code";
-                message.To.Add(new MailAddress(toEmail));
+                message.To.Add(new MailAddress(ToEmail));
                 message.Body = $"Your Verticfication Code:{Code}.";
 
                 SmtpClient smtpClient = new SmtpClient("smtp.office365.com")
