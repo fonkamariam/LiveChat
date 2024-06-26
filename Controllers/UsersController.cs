@@ -371,7 +371,6 @@ namespace LiveChat.Controllers
                 bool x = SendEmail(emailPara, code);
                 if (x == false)
                 {
-                    Console.WriteLine("Invaild Email");
                     return StatusCode(20,"Couldn't Send email,Try again");
                 }
                 RegisterVertifyDto registerVertify = new RegisterVertifyDto
@@ -384,7 +383,6 @@ namespace LiveChat.Controllers
                     .Where(a => a.Email == emailPara)
                     .Get();
                 var rg = responseReg.Models.Count();
-                Console.WriteLine(rg);
                 if (rg == 1)
                 {
                     var sin = await _supabaseClient.From<RegisterVertifyDto>()
@@ -458,7 +456,12 @@ namespace LiveChat.Controllers
                             Token = token,
                             RefreshToken = refreshToken.Token,
                             RefreshTokenExpiry= refreshToken.Expires,
-                            Name = person.Name
+                            Name = person.Name,
+                            LastName = "",
+                            Bio = "",
+                            Dark = false,
+                            ProfilePicture = null
+
                 };
                 
                 await _supabaseClient.From<RegisterVertifyDto>()
@@ -468,7 +471,9 @@ namespace LiveChat.Controllers
                 {
                     UserId = final1.Id,
                     Name = person.Name,
-                    Status = "true"
+                    Status = "true",
+                    LastSeen = DateTime.UtcNow
+
 
                 };
                 Console.WriteLine("About to insterted Name in UserProfile");
@@ -476,7 +481,6 @@ namespace LiveChat.Controllers
 
 
 
-                Console.WriteLine("Insterted Name in UserProfile");
 
 
 
