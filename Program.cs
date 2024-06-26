@@ -52,7 +52,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
         builder => builder
-            .WithOrigins("https://fonkagram.netlify.app/")
+            .WithOrigins("https://fonkagram.netlify.app/", "https://livechatbackend-xwgx.onrender.com:8080")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
