@@ -460,7 +460,7 @@ namespace LiveChat.Controllers
                             LastName = "",
                             Bio = "",
                             Dark = false,
-                            ProfilePicture = null
+                            ProfilePicture = ""
 
                 };
                 
