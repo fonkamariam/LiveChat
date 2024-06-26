@@ -771,7 +771,7 @@ namespace LiveChat.Controllers
                 foreach (var user in searchResult)
                 {
                     var getProfile = await _supabaseClient.From<UserProfiledto>()
-                        .Where(n => n.UserId == user.Id)
+                        .Where(n => n.UserId == user.Id && n.Deleted == false)
                         .Get();
                     var getProfile2 = getProfile.Models.FirstOrDefault();
                     List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getProfile2.ProfilePic);
