@@ -128,15 +128,23 @@ else
 }
 
 
-app.UseCors(a =>
+
+app.UseCors("AllowReactApp"); // Make sure this is before UseRouting
+
+app.Use(async (context, next) =>
 {
-    a.AllowAnyOrigin()
-        .AllowAnyMethod()
-        .AllowAnyHeader();
+    context.Response.OnStarting(() =>
+    {
+        if (!context.Response.Headers.ContainsKey("Access-Control-Allow-Origin"))
+        {
+            context.Response.Headers.Add("Access-Control-Allow-Origin", "https://fonkagram.netlify.app");
+        }
+        return Task.CompletedTask;
+    });
+    await next();
 });
-app.UseAuthentication();
 app.UseRouting();
-app.MapControllers();
+app.UseAuthentication();
 app.UseAuthorization();
 app.UseEndpoints(endpoints => {
 
