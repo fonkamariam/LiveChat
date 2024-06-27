@@ -88,37 +88,7 @@ namespace LiveChat.Controllers
 
 
 
-                /*   START HERE NOTIFICATION
-                var responseRec = await _supabaseClient.From<Userdto>() 
-                            .Where(n => n.Id == recp && n.Deleted == false)
-                            .Get();
-                        if (responseRec == null)
-                        {
-                            return BadRequest("Problem getting user profile in ws for conversation");
-                        } 
-                        var respOnseModelNotification = responseRec.Models.FirstOrDefault();
-                        var notifications = respOnseModelNotification.Notification ?? new Dictionary<string, string>();
-                        if (notifications.ContainsKey(convIdJson.ToString()))
-                        {
-                            Console.WriteLine("found Conversation key with value");
-                            Console.WriteLine(notifications[convIdJson.ToString()]);
-                            notifications[convIdJson.ToString()] = (int.Parse(notifications[convIdJson.ToString()]) + 1).ToString();
-                        } 
-                        else
-                        {
-                            Console.WriteLine("else, Not found key, setting default to one");
-                            notifications[convIdJson.ToString()] = "1"; 
-                        }
-
-
-                        // Serialize the updated notifications back to JSON
-                        respOnseModelNotification.Notification = notifications;
-
-                        // Update the UserProfiledto record in the database
-                        await _supabaseClient.From<Userdto>().Update(respOnseModelNotification);
-                        Console.WriteLine("End of Notification");
-                        // END HERE NOTIFICATION
-                */
+         
 
                 if (recp!= sender)
                 {
@@ -155,7 +125,6 @@ namespace LiveChat.Controllers
                 {
                     final = recp;
                 }
-                Console.WriteLine($"DeleteMessage: WS sending to {final}");
                 if (recp != sender)
                 {
                     await _hubContext.Clients.Group(final.ToString()).SendAsync("ReceiveMessage", payLoad);
@@ -1093,20 +1062,7 @@ namespace LiveChat.Controllers
                         .Get();
                     var getEmail = getConvEmail.Models.FirstOrDefault();
 
-                    /*
-                    // Start Notification 
                     
-                    var notifications = getEmail.Notification ?? new Dictionary<string, string>();
-                    // If the key exists, increment its value 
-                    long intValue = 0;
-                   if (notifications.ContainsKey(convId.ToString()))
-                    {
-                   
-                        intValue = long.Parse(notifications[convId.ToString()]);
-
-                       
-                    }
-                    */
                     List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getProfile2.ProfilePic);
                     //allProfilePic.Reverse();
                     if (allProfilePic != null)

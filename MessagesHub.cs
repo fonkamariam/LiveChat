@@ -36,7 +36,7 @@ public class MessagesHub : Hub
         var userId = userIdclaim.Value.Split(':')[0].Trim();
         long userIdLong = long.Parse(userId);
 
-        //Console.WriteLine($"About to Login: {userIdLong}");
+        Console.WriteLine($" Logged IN: {userIdLong}");
         
 
         var logoutHandle = await _supabaseClient.From<UserProfiledto>()
@@ -47,9 +47,7 @@ public class MessagesHub : Hub
 
         await logoutHandle.Update<UserProfiledto>();
         
-        //Console.WriteLine($"{userIdLong} Logged in");
-
-
+        
         await Groups.AddToGroupAsync(Context.ConnectionId, userId);
         _connectedClients++;
         // Online
@@ -71,7 +69,8 @@ public class MessagesHub : Hub
         var userId = userIdclaim.Value.Split(':')[0].Trim();
         long userIdLong = long.Parse(userId);
 
-        //Console.WriteLine($"About to Login: {userIdLong}");
+        Console.WriteLine($" Logged OUT: {userIdLong}");
+
 
         var logoutHandle = await _supabaseClient.From<UserProfiledto>()
                  .Where(n => n.UserId == userIdLong)
@@ -89,9 +88,7 @@ public class MessagesHub : Hub
         // Offline
         _connectedUsers.TryRemove(userId, out _);
         await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
-        //Console.WriteLine($"{userIdLong} LoggedOut");
-
-        // Offline
+       
 
         await base.OnDisconnectedAsync(exception);
 	}
