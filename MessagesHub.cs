@@ -114,6 +114,8 @@ public class MessagesHub : Hub
 
         var userId = userIdclaim.Value.Split(':')[0].Trim();
         long userIdLong = long.Parse(userId);
+        Console.WriteLine(state);
+
 
         if (state == "hidden")
         {
@@ -128,6 +130,7 @@ public class MessagesHub : Hub
         }
         else
         {
+            Console.WriteLine(state);
             // Handle visibility change to visible
             if (_connectedUsers.ContainsKey(userId))
             {
