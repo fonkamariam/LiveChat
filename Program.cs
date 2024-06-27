@@ -7,7 +7,6 @@ using Supabase;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Builder;
 using Newtonsoft.Json;
-
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -34,6 +33,7 @@ var secretsConfig = new ConfigurationBuilder()
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSingleton<UserConnectionManager>();
 builder.Services.AddScoped<Supabase.Client>(provider =>
 {
     var supabaseUrl = secretsConfig["Supabase:SupabaseUrl"];

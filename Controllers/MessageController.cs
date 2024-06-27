@@ -26,13 +26,15 @@ namespace LiveChat.Controllers
         private readonly IConfiguration _configuration;
         private readonly Client _supabaseClient;
         private readonly IHubContext<MessagesHub> _hubContext;
+        private readonly UserConnectionManager _userConnectionManager;
 
-        
-        public MessageController(IConfiguration configuration, Client supabaseClient, IHubContext<MessagesHub> hubContext)
+
+        public MessageController(IConfiguration configuration, Client supabaseClient, IHubContext<MessagesHub> hubContext, UserConnectionManager userConnectionManager)
         {
             _configuration = configuration;
             _supabaseClient = supabaseClient;
             _hubContext = hubContext;
+            _userConnectionManager = userConnectionManager;
         }
         
         [HttpPost("WebSocketMessage")]
@@ -92,7 +94,18 @@ namespace LiveChat.Controllers
 
                 if (recp!= sender)
                 {
-                    await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
+                    if (_userConnectionManager.TryGetValue(recp.ToString(), out var userInfo) && userInfo.IsActive)
+                    {
+                        // Send message to active recipient
+                        await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
+                    }
+                    else
+                    {
+                        // Store payload for inactive recipient
+                        Console.WriteLine($"Insert about to Stored for userId:{recp}");
+                        //await StorePayloadForUserAsync(recp, payLoad);
+                    }
+                    //await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
 
                 }
 
@@ -103,8 +116,31 @@ namespace LiveChat.Controllers
 
                 if (recp != sender)
                 {
-                    await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
-                    await _hubContext.Clients.Group(sender.ToString()).SendAsync("ReceiveMessage", payLoad);
+                    if (_userConnectionManager.TryGetValue(recp.ToString(), out var userInfo) && userInfo.IsActive)
+                    {
+                        // Send message to active recipient
+                        await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
+                    }
+                    else
+                    {
+                        // Store payload for inactive recipient
+                        //await StorePayloadForUserAsync(recp, payLoad);
+                    }
+                    //await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
+                    if (_userConnectionManager.TryGetValue(sender.ToString(), out var userInfo1) && userInfo1.IsActive)
+                    {
+                        // Send message to active recipient
+                        await _hubContext.Clients.Group(sender.ToString()).SendAsync("ReceiveMessage", payLoad);
+
+                    }
+                    else
+                    {
+                        // Store payload for inactive recipient
+                        Console.WriteLine($"Insert about to Stored for userId:{recp}");
+
+                        //await StorePayloadForUserAsync(recp, payLoad);
+                    }
+                    //await _hubContext.Clients.Group(sender.ToString()).SendAsync("ReceiveMessage", payLoad);
 
 
                 }
@@ -127,7 +163,20 @@ namespace LiveChat.Controllers
                 }
                 if (recp != sender)
                 {
-                    await _hubContext.Clients.Group(final.ToString()).SendAsync("ReceiveMessage", payLoad);
+                    if (_userConnectionManager.TryGetValue(final.ToString(), out var userInfo) && userInfo.IsActive)
+                    {
+                        // Send message to active recipient
+                        await _hubContext.Clients.Group(final.ToString()).SendAsync("ReceiveMessage", payLoad);
+
+                    }
+                    else
+                    {
+                        // Store payload for inactive recipient
+                        Console.WriteLine($"Insert about to Stored for userId:{recp}");
+
+                        //await StorePayloadForUserAsync(recp, payLoad);
+                    }
+                    //await _hubContext.Clients.Group(final.ToString()).SendAsync("ReceiveMessage", payLoad);
 
                 }
 
@@ -141,26 +190,37 @@ namespace LiveChat.Controllers
 
             return Ok();
         }
-        
+
         [HttpPost("wsc")]
         public async Task<IActionResult> HandleConversationEvent([FromBody] object payloadObject)
         {
             if (payloadObject == null)
             {
-                
+
                 return BadRequest("Payload is null");
             }
             // Cast the payload to a JObject
             string x = payloadObject.ToString();
+
             ConvPayLoad convPayLoad = JsonConvert.DeserializeObject<ConvPayLoad>(x);
 
-            await _hubContext.Clients.All.SendAsync("Receive Conversation", convPayLoad);
-
-
-
+            foreach (var user in _userConnectionManager.GetAllUsers())
+            {
+                if (user.Value.IsActive)
+                {
+                    await _hubContext.Clients.Client(user.Value.ConnectionId).SendAsync("Receive UserProfile", convPayLoad);
+                }
+                else
+                {
+                    // Store the payload for the inactive user
+                    // Implement your storage logic here, for example, saving to a database or a persistent storage
+                    //StorePayloadForUser(user.Key, userPayLoad);
+                }
+            }
             return Ok();
-        }
-        
+
+        } 
+
         [HttpPost("WebSocketUser")]
         public async Task<IActionResult> HandleUserEvent([FromBody] object payloadObject)
         {
@@ -173,17 +233,28 @@ namespace LiveChat.Controllers
             // Cast the payload to a JObject
             string x = payloadObject.ToString();
             UserPayLoad userPayLoad = JsonConvert.DeserializeObject<UserPayLoad>(x);
-            
+
 
             if (userPayLoad.type == "UPDATE")
             {
-                await _hubContext.Clients.All.SendAsync("Receive UserProfile", userPayLoad);
+                    foreach (var user in _userConnectionManager.GetAllUsers())
+                    {
+                        if (user.Value.IsActive)
+                        {
+                            await _hubContext.Clients.Client(user.Value.ConnectionId).SendAsync("Receive UserProfile", userPayLoad);
+                        }
+                        else
+                        {
+                            // Store the payload for the inactive user
+                            // Implement your storage logic here, for example, saving to a database or a persistent storage
+                            //StorePayloadForUser(user.Key, userPayLoad);
+                        }
+                    }
+                  
                 return Ok();
+                
             }
-            else
-            {
-                return BadRequest();
-            }
+            return BadRequest();
         }
 
         [HttpPut("zeroNotificationMID"), Authorize]
