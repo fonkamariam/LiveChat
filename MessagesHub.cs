@@ -175,9 +175,11 @@ public class MessagesHub : Hub
 
         var userId = userIdclaim.Value.Split(':')[0].Trim();
         long userIdLong = long.Parse(userId);
+        Console.WriteLine($"User {userIdLong} is {isOnline}");
 
         if (isOnline)
         {
+
             // Handle reconnection
             if (_connectedUsers.ContainsKey(userId))
             {
@@ -189,9 +191,11 @@ public class MessagesHub : Hub
         }
         else
         {
+            Console.WriteLine($"User {userIdLong} is offline ");
+
             // Handle disconnection
             if (_connectedUsers.ContainsKey(userId))
-            {
+            { 
                 Console.WriteLine($"User {userIdLong} went offline");
 
                 _connectedUsers[userId] = (_connectedUsers[userId].ConnectionId, false);
