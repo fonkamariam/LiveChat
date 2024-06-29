@@ -48,14 +48,18 @@ public class MessagesHub : Hub
         logoutHandle.LastSeen = DateTime.UtcNow;
 
         await logoutHandle.Update<UserProfiledto>();
-        
-        
+
+
         await Groups.AddToGroupAsync(Context.ConnectionId, userId);
-        _connectedClients++;
-        // Online
-        _connectedUsers[userId] = (Context.ConnectionId, true);
+
+        // Update connection manager
+        _userConnectionManager.AddOrUpdateUser(userId, new UserConnectionInfo
+        {
+            ConnectionId = Context.ConnectionId,
+            IsActive = true
+        });
+
         await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
-        // Online
         await base.OnConnectedAsync();
 	}
 
@@ -83,8 +87,9 @@ public class MessagesHub : Hub
        
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
 
-        
-        _connectedClients--;
+        // Update connection manager
+        //_userConnectionManager.RemoveUser(userId);
+
         if (_connectedUsers.ContainsKey(userId))
         {
             Console.WriteLine($"User {userIdLong} went offline");
@@ -166,8 +171,9 @@ public class MessagesHub : Hub
         await logoutHandle.Update<UserProfiledto>();
 
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
-        _connectedClients--;
-        _connectedUsers.TryRemove(userId, out _);
+        
+        _userConnectionManager.RemoveUser(userId);
+
         Console.WriteLine($"User {userIdLong} Logged out");
 
         await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
