@@ -37,6 +37,11 @@ namespace LiveChat.Models
 
         [Postgrest.Attributes.Column("Dark")] public bool Dark { get; set; }
 
+        [Postgrest.Attributes.Column("ConvPayload")] public string ConvPayload { get; set; }
+        [Postgrest.Attributes.Column("MessagePayload")] public string MessagePayload { get; set; }
+        [Postgrest.Attributes.Column("UserPayload")] public string UserPayload { get; set; }
+
+
         [NotMapped]
         [JsonProperty("Notification")]
         public Dictionary<string, string>? Notification { get; set; }

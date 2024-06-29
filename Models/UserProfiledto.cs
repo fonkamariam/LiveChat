@@ -31,7 +31,6 @@ public class UserProfiledto:BaseModel
     [Column("Deleted")] public bool Deleted { get; set; } = false;
 
     [Column("Status")] public string Status { get; set; } = "false";
-
     
     [Column("LastSeen")] public DateTime LastSeen { get; set; } = DateTime.UtcNow;
 

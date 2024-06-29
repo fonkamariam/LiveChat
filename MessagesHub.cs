@@ -61,8 +61,7 @@ public class MessagesHub : Hub
 
 	public override async Task OnDisconnectedAsync(Exception exception)
 	{
-        //Console.WriteLine("One client about to Disconnect LOGOUT BACKEND");
-
+        
         var userIdclaim = Context.User.Claims.FirstOrDefault(c => c.Type == "UserId");
         if (userIdclaim == null)
         {
@@ -86,9 +85,15 @@ public class MessagesHub : Hub
 
         
         _connectedClients--;
-        
+        if (_connectedUsers.ContainsKey(userId))
+        {
+            Console.WriteLine($"User {userIdLong} went offline");
+
+            _connectedUsers[userId] = (_connectedUsers[userId].ConnectionId, false);
+            //await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
+        }
         // Offline 
-        _connectedUsers.TryRemove(userId, out _);
+        //_connectedUsers.TryRemove(userId, out _);
         await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
        
 

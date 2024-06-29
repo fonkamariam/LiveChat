@@ -36,6 +36,66 @@ namespace LiveChat.Controllers
             _hubContext = hubContext;
             _userConnectionManager = userConnectionManager;
         }
+        [HttpGet("GetMissedPayloads"),Authorize]
+        public async Task<IActionResult> GetMissedPayloads()
+        {
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
+            {
+                return StatusCode(15, "Invalid Token");
+            }
+            var email = emailClaim.Value.Split(':')[0].Trim();
+            try
+            {
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email && n.Deleted == false)
+                    .Single();
+                var hey = response.Models.FirstOrDefault();
+
+                if (hey == null)
+                {
+                    return Unauthorized("Invalid Token");
+                }
+                List<string> emptyProfilePic = [];
+
+                if (response.MessagePayload == null && response.UserPayload == null && response.ConvPayload == null)
+                {
+                    
+                    return Ok(emptyProfilePic);
+                }
+
+
+                List<PayLoad> allMessagePayloads = JsonConvert.DeserializeObject<PayLoad<>>(response.MessagePayload);
+                List<UserPayLoad> allUserPayloads = JsonConvert.DeserializeObject<UserPayLoad<>>(response.MessagePayload);
+                List<ConvPayLoad> allConvPayloads = JsonConvert.DeserializeObject<PayLoad<>>(response.MessagePayload);
+
+                emptyProfilePic.Add(allMessagePayloads);
+                emptyProfilePic.Add(allUserPayloads);
+                emptyProfilePic.Add(allConvPayloads);
+
+
+
+
+
+
+                response.MessagePayload = null;
+                response.ConvPayload = null;
+                response.UserPayload = null;
+
+                await response.Update<Userdto>();
+                Console.WriteLine("Given all 3 payloads and set them to null");
+
+
+                return Ok(emptyProfilePic);
+
+
+            }
+            catch (Exception)
+            {
+                return BadRequest("Connection Problem first part");
+            }
+
+        }
         
         [HttpPost("WebSocketMessage")]
         public async Task<IActionResult> HandleMessageEvent([FromBody] object payloadObject)
@@ -99,10 +159,40 @@ namespace LiveChat.Controllers
                         // Send message to active recipient
                         await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
                     }
-                    else
+                    else 
                     {
+                        var getArrayModel = await _supabaseClient.From<Userdto>()
+                         .Where(n => n.UserId == recp && n.Deleted == false)
+                         .Single();
+                        //var getArrayModel = getArray.Models.FirstOrDefault();
+                        if (getArrayModel.MessagePayload == null) 
+                        {                      
+                            List<string> emptyProfilePic = [];
+                            emptyProfilePic.Add(payLoad);
+                            string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
+                            getArrayModel.MessagePayload = jsonListEmpty;
+                            await getArrayModel.Update<Userdto>();
+                            Console.WriteLine("ADded empty");
+                            return Ok("Added to an empty array");
+                        }
+
+
+                        List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getArrayModel.MessagePayload);
+                        
+                        allProfilePic.Add(payLoad);
+
+
+
+                        string jsonList = JsonConvert.SerializeObject(allProfilePic);
+
+
+                        getArrayModel.MessagePayload = jsonList;
+
+                        await getArrayModel.Update<Userdto>();
+                        Console.WriteLine("aDDed Payload");
+
                         // Store payload for inactive recipient
-                        Console.WriteLine($"Insert about to Stored for userId:{recp}");
+                        Console.WriteLine($"Inserted to Stored for userId:{recp}");
                         //await StorePayloadForUserAsync(recp, payLoad);
                     }
                     //await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
@@ -123,7 +213,38 @@ namespace LiveChat.Controllers
                     }
                     else
                     {
+                        var getArrayModel = await _supabaseClient.From<Userdto>()
+                         .Where(n => n.UserId == recp && n.Deleted == false)
+                         .Single();
+                        //var getArrayModel = getArray.Models.FirstOrDefault();
+                        if (getArrayModel.MessagePayload == null)
+                        {
+                            List<string> emptyProfilePic = [];
+                            emptyProfilePic.Add(payLoad);
+                            string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
+                            getArrayModel.MessagePayload = jsonListEmpty;
+                            await getArrayModel.Update<Userdto>();
+                            Console.WriteLine("ADded empty");
+                            return Ok("Added to an empty array");
+                        }
+
+
+                        List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getArrayModel.MessagePayload);
+
+                        allProfilePic.Add(payLoad);
+
+
+
+                        string jsonList = JsonConvert.SerializeObject(allProfilePic);
+
+
+                        getArrayModel.MessagePayload = jsonList;
+
+                        await getArrayModel.Update<Userdto>();
+                        Console.WriteLine("aDDed Payload");
+
                         // Store payload for inactive recipient
+                        Console.WriteLine($"Inserted to Stored for userId:{recp}");
                         //await StorePayloadForUserAsync(recp, payLoad);
                     }
                     //await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
@@ -135,7 +256,39 @@ namespace LiveChat.Controllers
                     }
                     else
                     {
+                        var getArrayModel = await _supabaseClient.From<Userdto>()
+                         .Where(n => n.UserId == sender && n.Deleted == false)
+                         .Single();
+                        //var getArrayModel = getArray.Models.FirstOrDefault();
+                        if (getArrayModel.MessagePayload == null)
+                        {
+                            List<string> emptyProfilePic = [];
+                            emptyProfilePic.Add(payLoad);
+                            string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
+                            getArrayModel.MessagePayload = jsonListEmpty;
+                            await getArrayModel.Update<Userdto>();
+                            Console.WriteLine("ADded empty");
+                            return Ok("Added to an empty array");
+                        }
+
+
+                        List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getArrayModel.MessagePayload);
+
+                        allProfilePic.Add(payLoad);
+
+
+
+                        string jsonList = JsonConvert.SerializeObject(allProfilePic);
+
+
+                        getArrayModel.MessagePayload = jsonList;
+
+                        await getArrayModel.Update<Userdto>();
+                        Console.WriteLine("aDDed Payload");
+
                         // Store payload for inactive recipient
+                        Console.WriteLine($"Inserted to Stored for userId:{recp}");
+                        //await StorePayloadForUserAsync(recp, payLoad);
                         Console.WriteLine($"Insert about to Stored for userId:{recp}");
 
                         //await StorePayloadForUserAsync(recp, payLoad);
@@ -171,7 +324,39 @@ namespace LiveChat.Controllers
                     }
                     else
                     {
+                        var getArrayModel = await _supabaseClient.From<Userdto>()
+                         .Where(n => n.UserId == final && n.Deleted == false)
+                         .Single();
+                        //var getArrayModel = getArray.Models.FirstOrDefault();
+                        if (getArrayModel.MessagePayload == null)
+                        {
+                            List<string> emptyProfilePic = [];
+                            emptyProfilePic.Add(payLoad);
+                            string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
+                            getArrayModel.MessagePayload = jsonListEmpty;
+                            await getArrayModel.Update<Userdto>();
+                            Console.WriteLine("ADded empty");
+                            return Ok("Added to an empty array");
+                        }
+
+
+                        List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getArrayModel.MessagePayload);
+
+                        allProfilePic.Add(payLoad);
+
+
+
+                        string jsonList = JsonConvert.SerializeObject(allProfilePic);
+
+
+                        getArrayModel.MessagePayload = jsonList;
+
+                        await getArrayModel.Update<Userdto>();
+                        Console.WriteLine("aDDed Payload");
+
                         // Store payload for inactive recipient
+                        Console.WriteLine($"Inserted to Stored for userId:{recp}");
+                        //await StorePayloadForUserAsync(recp, payLoad);
                         Console.WriteLine($"Insert about to Stored for userId:{recp}");
 
                         //await StorePayloadForUserAsync(recp, payLoad);
@@ -212,9 +397,39 @@ namespace LiveChat.Controllers
                 }
                 else
                 {
-                    // Store the payload for the inactive user
-                    // Implement your storage logic here, for example, saving to a database or a persistent storage
-                    //StorePayloadForUser(user.Key, userPayLoad);
+                    var getArrayModel = await _supabaseClient.From<Userdto>()
+                     .Where(n => n.UserId == user.Key && n.Deleted == false)
+                     .Single();
+                    //var getArrayModel = getArray.Models.FirstOrDefault();
+                    if (getArrayModel.ConvPayload == null)
+                    {
+                        List<string> emptyProfilePic = [];
+                        emptyProfilePic.Add(convPayLoad);
+                        string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
+                        getArrayModel.ConvPayload = jsonListEmpty;
+                        await getArrayModel.Update<Userdto>();
+                        Console.WriteLine("ADded empty");
+                        return Ok("Added to an empty array");
+                    }
+
+
+                    List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getArrayModel.ConvPayload);
+
+                    allProfilePic.Add(convPayLoad);
+
+
+
+                    string jsonList = JsonConvert.SerializeObject(allProfilePic);
+
+
+                    getArrayModel.ConvPayload = jsonList;
+
+                    await getArrayModel.Update<Userdto>();
+                    Console.WriteLine("aDDed Payload");
+
+                    // Store payload for inactive recipient
+                    Console.WriteLine($"Inserted to Stored for userId:{recp}");
+                    //await StorePayloadForUserAsync(recp, payLoad);
                 }
             }
             return Ok();
@@ -245,11 +460,42 @@ namespace LiveChat.Controllers
                         }
                         else
                         {
-                            // Store the payload for the inactive user
-                            // Implement your storage logic here, for example, saving to a database or a persistent storage
-                            //StorePayloadForUser(user.Key, userPayLoad);
+                        var getArrayModel = await _supabaseClient.From<Userdto>()
+                     .Where(n => n.UserId == user.Key && n.Deleted == false)
+                     .Single();
+                        //var getArrayModel = getArray.Models.FirstOrDefault();
+                        if (getArrayModel.UserPayload == null)
+                        {
+                            List<string> emptyProfilePic = [];
+                            emptyProfilePic.Add(userPayLoad);
+                            string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
+                            getArrayModel.UserPayload = jsonListEmpty;
+                            await getArrayModel.Update<Userdto>();
+                            Console.WriteLine("ADded empty");
+                            return Ok("Added to an empty array");
                         }
+
+
+                        List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getArrayModel.UserPayload);
+
+                        allProfilePic.Add(userPayLoad);
+
+
+
+                        string jsonList = JsonConvert.SerializeObject(allProfilePic);
+
+
+                        getArrayModel.UserPayload = jsonList;
+
+                        await getArrayModel.Update<Userdto>();
+                        Console.WriteLine("aDDed Payload");
+
+                        // Store payload for inactive recipient
+                        Console.WriteLine($"Inserted to Stored for userId:{recp}");
+                        //await StorePayloadForUserAsync(recp, payLoad);
+                        //StorePayloadForUser(user.Key, userPayLoad);
                     }
+                }
                   
                 return Ok();
                 
@@ -399,6 +645,7 @@ namespace LiveChat.Controllers
             }
 
         }
+        
         [HttpPost("SendMessage"), Authorize]
         public async Task<IActionResult> SendMessage([FromBody] MessageUser messageUser)
         {
