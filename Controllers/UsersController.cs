@@ -226,21 +226,18 @@ namespace LiveChat.Controllers
                     .Get();
                 if (getProfile == null) { return BadRequest("Invaild UserName"); }
                 var hereProfile = getProfile.Models.FirstOrDefault();
-                Console.WriteLine("12");
                 
                 List<string> allProfilePic = hereProfile.ProfilePic != null
                     ? JsonConvert.DeserializeObject<List<string>>(hereProfile.ProfilePic)
                     : null;
 
                 //allProfilePic.Reverse();
-                Console.WriteLine("13");
                 //List<string> reversedProfilePic = allProfilePic.AsEnumerable().Reverse().ToList();
                 if (allProfilePic != null)
                 {
                     allProfilePic.Reverse();
                    // Console.WriteLine("REversed HHHH");
                 }
-                Console.WriteLine("14");
                 var result = new
                     {
                         Id = hey.Id,
@@ -254,17 +251,13 @@ namespace LiveChat.Controllers
                         ProfilePicture = allProfilePic
 
                 };
-                Console.WriteLine("15");
                 var updateOnline = await _supabaseClient.From<UserProfiledto>()
                     .Where(n => n.UserId == hey.Id && n.Deleted == false)
                     .Single();
-                Console.WriteLine("16");
                 updateOnline.Status = "true";
-                Console.WriteLine("17");
                 await updateOnline.Update<UserProfiledto>();
 
 
-                Console.WriteLine("18");
                 return Ok(result);
                
             }
@@ -757,31 +750,41 @@ namespace LiveChat.Controllers
 
                 if (hey == null)
                 {
-                    return StatusCode(10, "Invalid Token");
+                    return Unauthorized("Invalid Token");
                 }
+                Console.WriteLine("1");
+
                 List<SearchEmail> allyouNeed = new List<SearchEmail>();
 
                 if (query == "." || query == "@")
                 {
                     return Ok(allyouNeed);
                 }
-                
+                Console.WriteLine("2");
+
                 var emailPrefix = $"%{query}%";
                 var queryResponse = await _supabaseClient
                     .From<Userdto>()
                     .Filter("Email",Postgrest.Constants.Operator.ILike,emailPrefix)
                     .Get();
-                
-               
-                 var searchResult = queryResponse.Models.ToList();
-                
+                Console.WriteLine("3");
+
+
+                var searchResult = queryResponse.Models.ToList();
+                Console.WriteLine("4");
+
                 foreach (var user in searchResult)
                 {
                     var getProfile = await _supabaseClient.From<UserProfiledto>()
                         .Where(n => n.UserId == user.Id && n.Deleted == false)
                         .Get();
                     var getProfile2 = getProfile.Models.FirstOrDefault();
-                    List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getProfile2.ProfilePic);
+                    Console.WriteLine("5");
+                    List<string> allProfilePic = getProfile2.ProfilePic != null
+                    ? JsonConvert.DeserializeObject<List<string>>(getProfile2.ProfilePic)
+                    : null;
+                    Console.WriteLine("6");
+
                     //allProfilePic.Reverse();
                     //List<string> reversedProfilePic = allProfilePic.AsEnumerable().Reverse().ToList();
                     if (allProfilePic != null)
@@ -789,6 +792,8 @@ namespace LiveChat.Controllers
                         allProfilePic.Reverse();
                        // Console.WriteLine("REversed HHHH");
                     }
+
+                    Console.WriteLine("7");
 
                     SearchEmail xzz = new SearchEmail
                     {
@@ -811,7 +816,7 @@ namespace LiveChat.Controllers
             }
             catch (Exception)
             {
-                return BadRequest("No Connection, Please Try again");
+                return StatusCode(500,"No Connection, Please Try again");
             }
 
         }
