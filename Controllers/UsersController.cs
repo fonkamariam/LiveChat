@@ -736,7 +736,7 @@ namespace LiveChat.Controllers
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
             {
-                return StatusCode(15, "Invalid Token");
+                return Unauthorized("Invalid Token");
             }
             var email = emailClaim.Value.Split(':')[0].Trim();
             try
@@ -747,44 +747,38 @@ namespace LiveChat.Controllers
 
 
                 var hey = response.Models.FirstOrDefault();
-
                 if (hey == null)
                 {
                     return Unauthorized("Invalid Token");
                 }
-                Console.WriteLine("1");
-
+                
                 List<SearchEmail> allyouNeed = new List<SearchEmail>();
 
                 if (query == "." || query == "@")
                 {
                     return Ok(allyouNeed);
                 }
-                Console.WriteLine("2");
-
+                
                 var emailPrefix = $"%{query}%";
                 var queryResponse = await _supabaseClient
                     .From<Userdto>()
+                    .Where(n=> n.Deleted == false)
                     .Filter("Email",Postgrest.Constants.Operator.ILike,emailPrefix)
                     .Get();
-                Console.WriteLine("3");
-
+                
 
                 var searchResult = queryResponse.Models.ToList();
-                Console.WriteLine("4");
-
+                
                 foreach (var user in searchResult)
                 {
                     var getProfile = await _supabaseClient.From<UserProfiledto>()
                         .Where(n => n.UserId == user.Id && n.Deleted == false)
                         .Get();
                     var getProfile2 = getProfile.Models.FirstOrDefault();
-                    Console.WriteLine("5");
                     List<string> allProfilePic = getProfile2.ProfilePic != null
                     ? JsonConvert.DeserializeObject<List<string>>(getProfile2.ProfilePic)
                     : null;
-                    Console.WriteLine("6");
-
+                    
                     //allProfilePic.Reverse();
                     //List<string> reversedProfilePic = allProfilePic.AsEnumerable().Reverse().ToList();
                     if (allProfilePic != null)
@@ -793,8 +787,7 @@ namespace LiveChat.Controllers
                        // Console.WriteLine("REversed HHHH");
                     }
 
-                    Console.WriteLine("7");
-
+                    
                     SearchEmail xzz = new SearchEmail
                     {
                         Id = user.Id,
@@ -814,8 +807,9 @@ namespace LiveChat.Controllers
 
                 
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine(ex);
                 return StatusCode(500,"No Connection, Please Try again");
             }
 
