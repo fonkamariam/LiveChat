@@ -194,17 +194,18 @@ namespace LiveChat.Controllers
         {
             try
             {
+                Console.WriteLine("1");
                 var response = await _supabaseClient.From<Userdto>()
                     .Where(n => n.Email == person.Email && n.Deleted == false).Get();
-
-                    var hey = response.Models.FirstOrDefault();
+                Console.WriteLine("2");
+                var hey = response.Models.FirstOrDefault();
 
                     if (hey == null)
                     {
                         return BadRequest("Email Invalid");
                     }
-                
 
+                Console.WriteLine("3");
                 if (!VertifyPasswordHash(person.Password, hey.PasswordHash, hey.PasswordSalt))
                     {
                         return Unauthorized("Wrong Password");
@@ -212,34 +213,42 @@ namespace LiveChat.Controllers
 
                     string token = CreateToken(hey.Email,hey.Id);
                     var refreshToken = GenerateRefreshToken();
+                Console.WriteLine("4");
                 var responseUpdate = await _supabaseClient.From<Userdto>()
                             .Where(n => n.Email == person.Email)
                             .Single();
-                    responseUpdate.Refresh_Token = refreshToken.Token;
-                    responseUpdate.Token_Created = refreshToken.Created;
+                Console.WriteLine("5");
+                responseUpdate.Refresh_Token = refreshToken.Token;
+                responseUpdate.Token_Created = refreshToken.Created;
+                Console.WriteLine("6");
                 responseUpdate.MessagePayload = null;
+                Console.WriteLine("7");
                 responseUpdate.ConvPayload = null;
+                Console.WriteLine("8");
                 responseUpdate.UserPayload = null;
-
+                Console.WriteLine("9");
                 responseUpdate.Token_Expiry = refreshToken.Expires;
                 
                 await responseUpdate.Update<Userdto>();
-                
+                Console.WriteLine("10");
                 var getProfile = await _supabaseClient.From<UserProfiledto>()
                     .Where(n => n.UserId == hey.Id && n.Deleted==false)
                     .Get();
-                
+                Console.WriteLine("11");
                 if (getProfile == null) { return BadRequest("Invaild UserName"); }
+                Console.WriteLine("12");
                 var hereProfile = getProfile.Models.FirstOrDefault();
 
                 List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(hereProfile.ProfilePic);
                 //allProfilePic.Reverse();
+                Console.WriteLine("13");
                 //List<string> reversedProfilePic = allProfilePic.AsEnumerable().Reverse().ToList();
                 if (allProfilePic != null)
                 {
                     allProfilePic.Reverse();
                    // Console.WriteLine("REversed HHHH");
                 }
+                Console.WriteLine("14");
                 var result = new
                     {
                         Id = hey.Id,
@@ -253,14 +262,17 @@ namespace LiveChat.Controllers
                         ProfilePicture = allProfilePic
 
                 };
+                Console.WriteLine("15");
                 var updateOnline = await _supabaseClient.From<UserProfiledto>()
                     .Where(n => n.UserId == hey.Id && n.Deleted == false)
                     .Single();
+                Console.WriteLine("16");
                 updateOnline.Status = "true";
+                Console.WriteLine("17");
                 await updateOnline.Update<UserProfiledto>();
 
-                
 
+                Console.WriteLine("18");
                 return Ok(result);
                
             }
