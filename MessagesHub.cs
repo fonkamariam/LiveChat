@@ -74,7 +74,7 @@ public class MessagesHub : Hub
         var userId = userIdclaim.Value.Split(':')[0].Trim();
         long userIdLong = long.Parse(userId);
 
-        Console.WriteLine($" Logged OUT DisConnected: {userIdLong}");
+        Console.WriteLine($" OnDisconnectedAsync (offline): {userIdLong}");
 
 
         var logoutHandle = await _supabaseClient.From<UserProfiledto>()
@@ -84,26 +84,21 @@ public class MessagesHub : Hub
         logoutHandle.LastSeen = DateTime.UtcNow;
 
         await logoutHandle.Update<UserProfiledto>();
-       
+
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
 
-        // Update connection manager
-        //_userConnectionManager.RemoveUser(userId);
-
-        if (_connectedUsers.ContainsKey(userId))
+        // Update connection manager without removing the user
+        if (_userConnectionManager.TryGetValue(userId, out var userInfo))
         {
+            userInfo.IsActive = false;
+            _userConnectionManager.AddOrUpdateUser(userId, userInfo);
             Console.WriteLine($"User {userIdLong} went offline");
 
-            _connectedUsers[userId] = (_connectedUsers[userId].ConnectionId, false);
-            //await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
+            await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
         }
-        // Offline 
-        //_connectedUsers.TryRemove(userId, out _);
-        await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
-       
 
         await base.OnDisconnectedAsync(exception);
-	}
+    }
 
 	public static int GetConnectedClients()
 	{
@@ -126,13 +121,13 @@ public class MessagesHub : Hub
         long userIdLong = long.Parse(userId);
         Console.WriteLine(state);
 
-
         if (state == "hidden")
         {
             // Handle visibility change to hidden
-            if (_connectedUsers.ContainsKey(userId))
+            if (_userConnectionManager.TryGetValue(userId, out var userInfo))
             {
-                _connectedUsers[userId] = (_connectedUsers[userId].ConnectionId, false);
+                userInfo.IsActive = false;
+                _userConnectionManager.AddOrUpdateUser(userId, userInfo);
                 Console.WriteLine($"User {userIdLong} visibility changed to hidden");
 
                 await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
@@ -142,9 +137,10 @@ public class MessagesHub : Hub
         {
             Console.WriteLine(state);
             // Handle visibility change to visible
-            if (_connectedUsers.ContainsKey(userId))
+            if (_userConnectionManager.TryGetValue(userId, out var userInfo))
             {
-                _connectedUsers[userId] = (_connectedUsers[userId].ConnectionId, true);
+                userInfo.IsActive = true;
+                _userConnectionManager.AddOrUpdateUser(userId, userInfo);
                 Console.WriteLine($"User {userIdLong} visibility changed to visible");
 
                 await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
@@ -171,7 +167,7 @@ public class MessagesHub : Hub
         await logoutHandle.Update<UserProfiledto>();
 
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
-        
+
         _userConnectionManager.RemoveUser(userId);
 
         Console.WriteLine($"User {userIdLong} Logged out");
@@ -190,28 +186,28 @@ public class MessagesHub : Hub
 
         if (isOnline)
         {
-
             // Handle reconnection
-            if (_connectedUsers.ContainsKey(userId))
+            if (_userConnectionManager.TryGetValue(userId, out var userInfo))
             {
+                userInfo.IsActive = true;
+                _userConnectionManager.AddOrUpdateUser(userId, userInfo);
                 Console.WriteLine($"User {userIdLong} is back online");
 
-                _connectedUsers[userId] = (_connectedUsers[userId].ConnectionId, true);
                 await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
             }
         }
         else
         {
-            Console.WriteLine($"User {userIdLong} is offline ");
-
             // Handle disconnection
-            if (_connectedUsers.ContainsKey(userId))
-            { 
+            if (_userConnectionManager.TryGetValue(userId, out var userInfo))
+            {
+                userInfo.IsActive = false;
+                _userConnectionManager.AddOrUpdateUser(userId, userInfo);
                 Console.WriteLine($"User {userIdLong} went offline");
 
-                _connectedUsers[userId] = (_connectedUsers[userId].ConnectionId, false);
                 await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
             }
         }
     }
+
 }

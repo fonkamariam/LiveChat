@@ -156,8 +156,8 @@ namespace LiveChat.Controllers
                 if (recp!= sender)
                 {
                     Console.WriteLine("INSERT Message Payload");
-                    //Console.WriteLine(_userConnectionManager.TryGetValue(recp.ToString(),out var userInfoo));
-                    //Console.WriteLine(userInfoo.IsActive);
+                    _userConnectionManager.TryGetValue(recp.ToString(),out var userInfoo);
+                    Console.WriteLine(userInfoo.IsActive);
 
                     if (_userConnectionManager.TryGetValue(recp.ToString(), out var userInfo) && userInfo.IsActive)
                     {
