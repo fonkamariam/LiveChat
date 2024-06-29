@@ -217,8 +217,10 @@ namespace LiveChat.Controllers
                             .Single();
                     responseUpdate.Refresh_Token = refreshToken.Token;
                     responseUpdate.Token_Created = refreshToken.Created;
-                    responseUpdate.MissedPayloads = null;
-                
+                responseUpdate.MessagePayload = null;
+                responseUpdate.ConvPayload = null;
+                responseUpdate.UserPayload = null;
+
                 responseUpdate.Token_Expiry = refreshToken.Expires;
                 
                 await responseUpdate.Update<Userdto>();

@@ -50,34 +50,38 @@ namespace LiveChat.Controllers
                 var response = await _supabaseClient.From<Userdto>()
                     .Where(n => n.Email == email && n.Deleted == false)
                     .Single();
-                var hey = response.Models.FirstOrDefault();
 
-                if (hey == null)
+                if (response == null)
                 {
                     return Unauthorized("Invalid Token");
                 }
-                List<string> emptyProfilePic = [];
+
+                var allPayloads = new List<object>();
 
                 if (response.MessagePayload == null && response.UserPayload == null && response.ConvPayload == null)
                 {
-                    
-                    return Ok(emptyProfilePic);
+                    return Ok(allPayloads);
                 }
 
+                if (response.MessagePayload != null)
+                {
+                    var allMessagePayloads = JsonConvert.DeserializeObject<List<PayLoad>>(response.MessagePayload);
+                    allPayloads.AddRange(allMessagePayloads);
+                }
 
-                List<PayLoad> allMessagePayloads = JsonConvert.DeserializeObject<PayLoad<>>(response.MessagePayload);
-                List<UserPayLoad> allUserPayloads = JsonConvert.DeserializeObject<UserPayLoad<>>(response.MessagePayload);
-                List<ConvPayLoad> allConvPayloads = JsonConvert.DeserializeObject<PayLoad<>>(response.MessagePayload);
+                if (response.UserPayload != null)
+                {
+                    var allUserPayloads = JsonConvert.DeserializeObject<List<UserPayLoad>>(response.UserPayload);
+                    allPayloads.AddRange(allUserPayloads);
+                }
 
-                emptyProfilePic.Add(allMessagePayloads);
-                emptyProfilePic.Add(allUserPayloads);
-                emptyProfilePic.Add(allConvPayloads);
+                if (response.ConvPayload != null)
+                {
+                    var allConvPayloads = JsonConvert.DeserializeObject<List<ConvPayLoad>>(response.ConvPayload);
+                    allPayloads.AddRange(allConvPayloads);
+                }
 
-
-
-
-
-
+                // Clear the payloads
                 response.MessagePayload = null;
                 response.ConvPayload = null;
                 response.UserPayload = null;
@@ -85,16 +89,13 @@ namespace LiveChat.Controllers
                 await response.Update<Userdto>();
                 Console.WriteLine("Given all 3 payloads and set them to null");
 
-
-                return Ok(emptyProfilePic);
-
-
+                return Ok(allPayloads);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine($"Error: {ex.Message}");
                 return BadRequest("Connection Problem first part");
             }
-
         }
         
         [HttpPost("WebSocketMessage")]
@@ -162,12 +163,12 @@ namespace LiveChat.Controllers
                     else 
                     {
                         var getArrayModel = await _supabaseClient.From<Userdto>()
-                         .Where(n => n.UserId == recp && n.Deleted == false)
+                         .Where(n => n.Id == recp && n.Deleted == false)
                          .Single();
                         //var getArrayModel = getArray.Models.FirstOrDefault();
                         if (getArrayModel.MessagePayload == null) 
                         {                      
-                            List<string> emptyProfilePic = [];
+                            List<PayLoad> emptyProfilePic = [];
                             emptyProfilePic.Add(payLoad);
                             string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
                             getArrayModel.MessagePayload = jsonListEmpty;
@@ -177,7 +178,7 @@ namespace LiveChat.Controllers
                         }
 
 
-                        List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getArrayModel.MessagePayload);
+                        List<PayLoad> allProfilePic = JsonConvert.DeserializeObject<List<PayLoad>>(getArrayModel.MessagePayload);
                         
                         allProfilePic.Add(payLoad);
 
@@ -214,12 +215,12 @@ namespace LiveChat.Controllers
                     else
                     {
                         var getArrayModel = await _supabaseClient.From<Userdto>()
-                         .Where(n => n.UserId == recp && n.Deleted == false)
+                         .Where(n => n.Id == recp && n.Deleted == false)
                          .Single();
                         //var getArrayModel = getArray.Models.FirstOrDefault();
                         if (getArrayModel.MessagePayload == null)
                         {
-                            List<string> emptyProfilePic = [];
+                            List<PayLoad> emptyProfilePic = [];
                             emptyProfilePic.Add(payLoad);
                             string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
                             getArrayModel.MessagePayload = jsonListEmpty;
@@ -229,7 +230,7 @@ namespace LiveChat.Controllers
                         }
 
 
-                        List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getArrayModel.MessagePayload);
+                        List<PayLoad> allProfilePic = JsonConvert.DeserializeObject<List<PayLoad>>(getArrayModel.MessagePayload);
 
                         allProfilePic.Add(payLoad);
 
@@ -257,12 +258,12 @@ namespace LiveChat.Controllers
                     else
                     {
                         var getArrayModel = await _supabaseClient.From<Userdto>()
-                         .Where(n => n.UserId == sender && n.Deleted == false)
+                         .Where(n => n.Id == sender && n.Deleted == false)
                          .Single();
                         //var getArrayModel = getArray.Models.FirstOrDefault();
                         if (getArrayModel.MessagePayload == null)
                         {
-                            List<string> emptyProfilePic = [];
+                            List<PayLoad> emptyProfilePic = [];
                             emptyProfilePic.Add(payLoad);
                             string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
                             getArrayModel.MessagePayload = jsonListEmpty;
@@ -272,7 +273,7 @@ namespace LiveChat.Controllers
                         }
 
 
-                        List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getArrayModel.MessagePayload);
+                        List<PayLoad> allProfilePic = JsonConvert.DeserializeObject<List<PayLoad>>(getArrayModel.MessagePayload);
 
                         allProfilePic.Add(payLoad);
 
@@ -325,12 +326,12 @@ namespace LiveChat.Controllers
                     else
                     {
                         var getArrayModel = await _supabaseClient.From<Userdto>()
-                         .Where(n => n.UserId == final && n.Deleted == false)
+                         .Where(n => n.Id == final && n.Deleted == false)
                          .Single();
                         //var getArrayModel = getArray.Models.FirstOrDefault();
                         if (getArrayModel.MessagePayload == null)
                         {
-                            List<string> emptyProfilePic = [];
+                            List<PayLoad> emptyProfilePic = [];
                             emptyProfilePic.Add(payLoad);
                             string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
                             getArrayModel.MessagePayload = jsonListEmpty;
@@ -340,7 +341,7 @@ namespace LiveChat.Controllers
                         }
 
 
-                        List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getArrayModel.MessagePayload);
+                        List<PayLoad> allProfilePic = JsonConvert.DeserializeObject<List<PayLoad>>(getArrayModel.MessagePayload);
 
                         allProfilePic.Add(payLoad);
 
@@ -398,12 +399,12 @@ namespace LiveChat.Controllers
                 else
                 {
                     var getArrayModel = await _supabaseClient.From<Userdto>()
-                     .Where(n => n.UserId == user.Key && n.Deleted == false)
+                     .Where(n => n.Id == long.Parse(user.Key) && n.Deleted == false)
                      .Single();
                     //var getArrayModel = getArray.Models.FirstOrDefault();
                     if (getArrayModel.ConvPayload == null)
                     {
-                        List<string> emptyProfilePic = [];
+                        List<ConvPayLoad> emptyProfilePic = [];
                         emptyProfilePic.Add(convPayLoad);
                         string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
                         getArrayModel.ConvPayload = jsonListEmpty;
@@ -413,7 +414,7 @@ namespace LiveChat.Controllers
                     }
 
 
-                    List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getArrayModel.ConvPayload);
+                    List<ConvPayLoad> allProfilePic = JsonConvert.DeserializeObject<List<ConvPayLoad>>(getArrayModel.ConvPayload);
 
                     allProfilePic.Add(convPayLoad);
 
@@ -428,7 +429,7 @@ namespace LiveChat.Controllers
                     Console.WriteLine("aDDed Payload");
 
                     // Store payload for inactive recipient
-                    Console.WriteLine($"Inserted to Stored for userId:{recp}");
+                    //Console.WriteLine($"Inserted to Stored for userId:{recp}");
                     //await StorePayloadForUserAsync(recp, payLoad);
                 }
             }
@@ -461,12 +462,12 @@ namespace LiveChat.Controllers
                         else
                         {
                         var getArrayModel = await _supabaseClient.From<Userdto>()
-                     .Where(n => n.UserId == user.Key && n.Deleted == false)
+                     .Where(n => n.Id == long.Parse(user.Key) && n.Deleted == false)
                      .Single();
                         //var getArrayModel = getArray.Models.FirstOrDefault();
                         if (getArrayModel.UserPayload == null)
                         {
-                            List<string> emptyProfilePic = [];
+                            List<UserPayLoad> emptyProfilePic = [];
                             emptyProfilePic.Add(userPayLoad);
                             string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
                             getArrayModel.UserPayload = jsonListEmpty;
@@ -476,7 +477,7 @@ namespace LiveChat.Controllers
                         }
 
 
-                        List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getArrayModel.UserPayload);
+                        List<UserPayLoad> allProfilePic = JsonConvert.DeserializeObject<List<UserPayLoad>>(getArrayModel.UserPayload);
 
                         allProfilePic.Add(userPayLoad);
 
@@ -491,7 +492,7 @@ namespace LiveChat.Controllers
                         Console.WriteLine("aDDed Payload");
 
                         // Store payload for inactive recipient
-                        Console.WriteLine($"Inserted to Stored for userId:{recp}");
+                        //Console.WriteLine($"Inserted to Stored for userId:{recp}");
                         //await StorePayloadForUserAsync(recp, payLoad);
                         //StorePayloadForUser(user.Key, userPayLoad);
                     }
