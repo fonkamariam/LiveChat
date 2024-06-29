@@ -1382,7 +1382,9 @@ namespace LiveChat.Controllers
                     var getEmail = getConvEmail.Models.FirstOrDefault();
 
                     
-                    List<string> allProfilePic = JsonConvert.DeserializeObject<List<string>>(getProfile2.ProfilePic);
+                    List<string> allProfilePic = getProfile2.ProfilePic != null
+                    ? JsonConvert.DeserializeObject<List<string>>(getProfile2.ProfilePic)
+                    : null;
                     //allProfilePic.Reverse();
                     if (allProfilePic != null)
                     {
