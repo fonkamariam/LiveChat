@@ -451,7 +451,7 @@ namespace LiveChat.Controllers
                 
                 var final1 = final.Models.First();
 
-                string token = CreateToken(userdto.Email,userdto.Id); 
+                string token = CreateToken(userdto.Email,final1.Id); 
                 var result = new
                         {
                             Id=final1.Id,
