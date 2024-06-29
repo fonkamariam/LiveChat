@@ -155,13 +155,18 @@ namespace LiveChat.Controllers
 
                 if (recp!= sender)
                 {
+                    Console.WriteLine("INSERT Message Payload");
                     if (_userConnectionManager.TryGetValue(recp.ToString(), out var userInfo) && userInfo.IsActive)
                     {
                         // Send message to active recipient
+                        Console.WriteLine("INSERT Message Payload:   Active");
+
                         await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
                     }
                     else 
                     {
+                        Console.WriteLine("INSERT Message Payload:    InActive");
+
                         var getArrayModel = await _supabaseClient.From<Userdto>()
                          .Where(n => n.Id == recp && n.Deleted == false)
                          .Single();
