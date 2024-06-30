@@ -42,7 +42,7 @@ namespace LiveChat.Controllers
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
             {
-                return StatusCode(15, "Invalid Token");
+                return Unauthorized("Invalid Token");
             }
             var email = emailClaim.Value.Split(':')[0].Trim();
             try
@@ -57,29 +57,47 @@ namespace LiveChat.Controllers
                 }
 
                 var allPayloads = new List<object>();
-
+                Console.WriteLine("1");
                 if (response.MessagePayload == null && response.UserPayload == null && response.ConvPayload == null)
                 {
+                    Console.WriteLine("1.5");
+
                     return Ok(allPayloads);
                 }
+                Console.WriteLine("2");
 
                 if (response.MessagePayload != null)
                 {
+                    Console.WriteLine("2.5");
+
                     var allMessagePayloads = JsonConvert.DeserializeObject<List<PayLoad>>(response.MessagePayload);
                     allPayloads.AddRange(allMessagePayloads);
+                    Console.WriteLine("2.6");
+
                 }
+                Console.WriteLine("3");
 
                 if (response.UserPayload != null)
                 {
+                    Console.WriteLine("3.5");
+
                     var allUserPayloads = JsonConvert.DeserializeObject<List<UserPayLoad>>(response.UserPayload);
                     allPayloads.AddRange(allUserPayloads);
+                    Console.WriteLine("3.6");
+
                 }
+                Console.WriteLine("4");
 
                 if (response.ConvPayload != null)
                 {
+                    Console.WriteLine("4.5");
+
                     var allConvPayloads = JsonConvert.DeserializeObject<List<ConvPayLoad>>(response.ConvPayload);
                     allPayloads.AddRange(allConvPayloads);
+                    Console.WriteLine("4.6");
+
                 }
+                Console.WriteLine("5");
 
                 // Clear the payloads
                 response.MessagePayload = null;
@@ -87,6 +105,8 @@ namespace LiveChat.Controllers
                 response.UserPayload = null;
 
                 await response.Update<Userdto>();
+                Console.WriteLine("6");
+
                 Console.WriteLine("Given all 3 payloads and set them to null");
 
                 return Ok(allPayloads);
@@ -189,8 +209,6 @@ namespace LiveChat.Controllers
                         List<PayLoad> allProfilePic = JsonConvert.DeserializeObject<List<PayLoad>>(getArrayModel.MessagePayload);
                         
                         allProfilePic.Add(payLoad);
-
-
 
                         string jsonList = JsonConvert.SerializeObject(allProfilePic);
 
@@ -390,6 +408,7 @@ namespace LiveChat.Controllers
         {
             if (payloadObject == null)
             {
+                Console.WriteLine("1");
 
                 return BadRequest("Payload is null");
             }
@@ -402,25 +421,36 @@ namespace LiveChat.Controllers
             {
                 if (user.Value.IsActive)
                 {
+                    Console.WriteLine("2");
+
                     await _hubContext.Clients.Client(user.Value.ConnectionId).SendAsync("Receive UserProfile", convPayLoad);
                 }
                 else
                 {
+                    Console.WriteLine("3");
+
                     var getArrayModel = await _supabaseClient.From<Userdto>()
                      .Where(n => n.Id == long.Parse(user.Key) && n.Deleted == false)
                      .Single();
+                    Console.WriteLine("4");
+
                     //var getArrayModel = getArray.Models.FirstOrDefault();
                     if (getArrayModel.ConvPayload == null)
                     {
+                        Console.WriteLine("5");
+
                         List<ConvPayLoad> emptyProfilePic = [];
                         emptyProfilePic.Add(convPayLoad);
                         string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
                         getArrayModel.ConvPayload = jsonListEmpty;
                         await getArrayModel.Update<Userdto>();
+                        Console.WriteLine("6");
+
                         Console.WriteLine("ADded empty");
                         return Ok("Added to an empty array");
                     }
 
+                    Console.WriteLine("7");
 
                     List<ConvPayLoad> allProfilePic = JsonConvert.DeserializeObject<List<ConvPayLoad>>(getArrayModel.ConvPayload);
 
@@ -432,6 +462,7 @@ namespace LiveChat.Controllers
 
 
                     getArrayModel.ConvPayload = jsonList;
+                    Console.WriteLine("8");
 
                     await getArrayModel.Update<Userdto>();
                     Console.WriteLine("aDDed Payload");
@@ -448,6 +479,8 @@ namespace LiveChat.Controllers
         [HttpPost("WebSocketUser")]
         public async Task<IActionResult> HandleUserEvent([FromBody] object payloadObject)
         {
+            Console.WriteLine("1");
+
             if (payloadObject == null)
             {
                 Console.WriteLine("the paramerter returned is Null");
@@ -457,6 +490,7 @@ namespace LiveChat.Controllers
             // Cast the payload to a JObject
             string x = payloadObject.ToString();
             UserPayLoad userPayLoad = JsonConvert.DeserializeObject<UserPayLoad>(x);
+            Console.WriteLine("2");
 
 
             if (userPayLoad.type == "UPDATE")
@@ -465,25 +499,36 @@ namespace LiveChat.Controllers
                     {
                         if (user.Value.IsActive)
                         {
-                            await _hubContext.Clients.Client(user.Value.ConnectionId).SendAsync("Receive UserProfile", userPayLoad);
+                        Console.WriteLine("3");
+
+                        await _hubContext.Clients.Client(user.Value.ConnectionId).SendAsync("Receive UserProfile", userPayLoad);
                         }
                         else
                         {
+                        Console.WriteLine("4");
+
                         var getArrayModel = await _supabaseClient.From<Userdto>()
-                     .Where(n => n.Id == long.Parse(user.Key) && n.Deleted == false)
-                     .Single();
+                           .Where(n => n.Id == long.Parse(user.Key) && n.Deleted == false)
+                           .Single();
+                        Console.WriteLine("5");
+
                         //var getArrayModel = getArray.Models.FirstOrDefault();
                         if (getArrayModel.UserPayload == null)
                         {
+                            Console.WriteLine("6");
+
                             List<UserPayLoad> emptyProfilePic = [];
                             emptyProfilePic.Add(userPayLoad);
                             string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
                             getArrayModel.UserPayload = jsonListEmpty;
                             await getArrayModel.Update<Userdto>();
+                            Console.WriteLine("7");
+
                             Console.WriteLine("ADded empty");
                             return Ok("Added to an empty array");
                         }
 
+                        Console.WriteLine("8");
 
                         List<UserPayLoad> allProfilePic = JsonConvert.DeserializeObject<List<UserPayLoad>>(getArrayModel.UserPayload);
 
@@ -495,6 +540,7 @@ namespace LiveChat.Controllers
 
 
                         getArrayModel.UserPayload = jsonList;
+                        Console.WriteLine("10");
 
                         await getArrayModel.Update<Userdto>();
                         Console.WriteLine("aDDed Payload");
@@ -1310,10 +1356,18 @@ namespace LiveChat.Controllers
                 
                 if (hey == null)
                 {
-                    return StatusCode(10, "Invalid Token");
+                    return Unauthorized("Invalid Token");
                 }
+                var responseUpdate = await _supabaseClient.From<Userdto>()
+                            .Where(n => n.Id == hey.Id)
+                            .Single();
+                responseUpdate.MessagePayload = null;
+                responseUpdate.ConvPayload = null;
+                responseUpdate.UserPayload = null;
+                
+                await responseUpdate.Update<Userdto>();
 
-               var allConvIdResponse = await _supabaseClient.From<ParticipantDto>()
+                var allConvIdResponse = await _supabaseClient.From<ParticipantDto>()
                      .Where(n => n.UserId == hey.Id)
                      .Get();
 
@@ -1431,7 +1485,7 @@ namespace LiveChat.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
-                return StatusCode(30,"Connection Problem, Backend"); 
+                return StatusCode(500,"Connection Problem, Backend"); 
             }
         }
 

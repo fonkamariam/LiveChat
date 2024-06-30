@@ -203,7 +203,7 @@ public class MessagesHub : Hub
             {
                 userInfo.IsActive = false;
                 _userConnectionManager.AddOrUpdateUser(userId, userInfo);
-                Console.WriteLine($"User {userIdLong} went offline");
+                Console.WriteLine($"User {userIdLong} went offline, Not supposed to be executed");
 
                 await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
             }
