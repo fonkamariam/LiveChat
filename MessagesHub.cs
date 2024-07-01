@@ -93,7 +93,7 @@ public class MessagesHub : Hub
                 }
 
                 // Add or update the user's online status and last seen time
-                onlinePayload[user.Key] = new UserStatusDic
+                onlinePayload[userIdLong.ToString()] = new UserStatusDic
                 {
                     IsActive = true,
                     LastSeen = DateTime.UtcNow
@@ -179,7 +179,7 @@ public class MessagesHub : Hub
                     }
 
                     // Add or update the user's online status and last seen time
-                    onlinePayload[user.Key] = new UserStatusDic
+                    onlinePayload[userIdLong.ToString()] = new UserStatusDic
                     {
                         IsActive = false,
                         LastSeen = DateTime.UtcNow
@@ -273,7 +273,7 @@ public class MessagesHub : Hub
                         }
 
                         // Add or update the user's online status and last seen time
-                        onlinePayload[user.Key] = new UserStatusDic
+                        onlinePayload[userIdLong.ToString()] = new UserStatusDic
                         {
                             IsActive = false,
                             LastSeen = DateTime.UtcNow
@@ -344,7 +344,7 @@ public class MessagesHub : Hub
                         }
 
                         // Add or update the user's online status and last seen time
-                        onlinePayload[user.Key] = new UserStatusDic
+                        onlinePayload[userIdLong.ToString()] = new UserStatusDic
                         {
                             IsActive = true,
                             LastSeen = DateTime.UtcNow
@@ -379,6 +379,7 @@ public class MessagesHub : Hub
             .Single();
         logoutHandle.Status = "false";
         logoutHandle.LastSeen = DateTime.UtcNow;
+        logoutHandle.OnlinePayload = null;
 
         await logoutHandle.Update<Userdto>();
 
@@ -419,7 +420,7 @@ public class MessagesHub : Hub
                 }
 
                 // Add or update the user's online status and last seen time
-                onlinePayload[user.Key] = new UserStatusDic
+                onlinePayload[userIdLong.ToString()] = new UserStatusDic
                 {
                     IsActive = false,
                     LastSeen = DateTime.UtcNow
@@ -497,7 +498,7 @@ public class MessagesHub : Hub
                         }
 
                         // Add or update the user's online status and last seen time
-                        onlinePayload[user.Key] = new UserStatusDic
+                        onlinePayload[userIdLong.ToString()] = new UserStatusDic
                         {
                             IsActive = true,
                             LastSeen = DateTime.UtcNow
