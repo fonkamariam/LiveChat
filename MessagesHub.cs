@@ -61,52 +61,56 @@ public class MessagesHub : Hub
         });
         foreach (var user in _userConnectionManager.GetAllUsers())
         {
-            if (user.Value.IsActive)
+            if (user.Key != userIdLong.ToString())
             {
-                Console.WriteLine("OnConnected:Active user, Online sent");
-                await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
-
-            }
-            else
-            {
-                Console.WriteLine("OnConnected,1 ");
-                
-                long onConnectedLong = long.Parse(user.Key);
-                var getArrayModel = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Id == onConnectedLong && n.Deleted == false)
-                    .Single();
-                Console.WriteLine("OnConnected,2 ");
-
-                // Handle OnlinePayload
-                Dictionary<string, UserStatusDic> onlinePayload;
-                if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
+                if (user.Value.IsActive)
                 {
-                    Console.WriteLine("OnConnected,3 ");
+                    Console.WriteLine("OnConnected:Active user, Online sent");
+                    await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
 
-                    onlinePayload = new Dictionary<string, UserStatusDic>();
                 }
                 else
                 {
-                    Console.WriteLine("OnConnected,4 ");
+                    Console.WriteLine("OnConnected,1 ");
 
-                    onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
+                    long onConnectedLong = long.Parse(user.Key);
+                    var getArrayModel = await _supabaseClient.From<Userdto>()
+                        .Where(n => n.Id == onConnectedLong && n.Deleted == false)
+                        .Single();
+                    Console.WriteLine("OnConnected,2 ");
+
+                    // Handle OnlinePayload
+                    Dictionary<string, UserStatusDic> onlinePayload;
+                    if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
+                    {
+                        Console.WriteLine("OnConnected,3 ");
+
+                        onlinePayload = new Dictionary<string, UserStatusDic>();
+                    }
+                    else
+                    {
+                        Console.WriteLine("OnConnected,4 ");
+
+                        onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
+                    }
+
+                    // Add or update the user's online status and last seen time
+                    onlinePayload[userIdLong.ToString()] = new UserStatusDic
+                    {
+                        IsActive = true,
+                        LastSeen = DateTime.UtcNow
+                    };
+
+                    // Serialize and store it back in the database
+                    getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
+                    await getArrayModel.Update<Userdto>();
+                    Console.WriteLine("OnConnected,5 ");
+
+
+
                 }
-
-                // Add or update the user's online status and last seen time
-                onlinePayload[userIdLong.ToString()] = new UserStatusDic
-                {
-                    IsActive = true,
-                    LastSeen = DateTime.UtcNow
-                };
-
-                // Serialize and store it back in the database
-                getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
-                await getArrayModel.Update<Userdto>();
-                Console.WriteLine("OnConnected,5 ");
-
-               
-
-            }            
+            }
+                
         }
         await base.OnConnectedAsync();
     }
@@ -145,54 +149,57 @@ public class MessagesHub : Hub
             Console.WriteLine($"User {userIdLong} went offline");
             foreach (var user in _userConnectionManager.GetAllUsers())
             {
-                if (user.Value.IsActive)
+
+                if (user.Key != userIdLong.ToString())
                 {
-                    Console.WriteLine("OnDisconnected: Active");
-                    await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
-
-                }
-                else
-                {
-                    Console.WriteLine("OnDisconnected,3 ");
-                    long userKeyLong = long.Parse(user.Key);
-                    Console.WriteLine($"user.Key {user.Key}");
-                    Console.WriteLine($"long.Parse user.key {long.Parse(user.Key)}");
-                    Console.WriteLine($"vUserKEy: {userKeyLong}");
-
-                    var getArrayModel = await _supabaseClient.From<Userdto>()
-                        .Where(n => n.Id == userKeyLong && n.Deleted == false)
-                        .Single();
-
-                    // Handle OnlinePayload
-                    Dictionary<string, UserStatusDic> onlinePayload;
-                    if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
+                    if (user.Value.IsActive)
                     {
-                        Console.WriteLine("OnDisconnected,4 ");
+                        Console.WriteLine("OnDisconnected: Active");
+                        await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
 
-                        onlinePayload = new Dictionary<string, UserStatusDic>();
                     }
                     else
                     {
-                        Console.WriteLine("OnDisconnected,5");
+                        Console.WriteLine("OnDisconnected,3 ");
+                        long userKeyLong = long.Parse(user.Key);
 
-                        onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
+                        var getArrayModel = await _supabaseClient.From<Userdto>()
+                            .Where(n => n.Id == userKeyLong && n.Deleted == false)
+                            .Single();
+
+                        // Handle OnlinePayload
+                        Dictionary<string, UserStatusDic> onlinePayload;
+                        if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
+                        {
+                            Console.WriteLine("OnDisconnected,4 ");
+
+                            onlinePayload = new Dictionary<string, UserStatusDic>();
+                        }
+                        else
+                        {
+                            Console.WriteLine("OnDisconnected,5");
+
+                            onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
+                        }
+
+                        // Add or update the user's online status and last seen time
+                        onlinePayload[userIdLong.ToString()] = new UserStatusDic
+                        {
+                            IsActive = false,
+                            LastSeen = DateTime.UtcNow
+                        };
+
+                        // Serialize and store it back in the database
+                        getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
+                        await getArrayModel.Update<Userdto>();
+                        Console.WriteLine("OnDisconnected,6");
+
+                        Console.WriteLine("Updated OnlinePayload");
+
                     }
-
-                    // Add or update the user's online status and last seen time
-                    onlinePayload[userIdLong.ToString()] = new UserStatusDic
-                    {
-                        IsActive = false,
-                        LastSeen = DateTime.UtcNow
-                    };
-
-                    // Serialize and store it back in the database
-                    getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
-                    await getArrayModel.Update<Userdto>();
-                    Console.WriteLine("OnDisconnected,6");
-
-                    Console.WriteLine("Updated OnlinePayload");
-
                 }
+
+                    
             }
             
         }
@@ -238,55 +245,56 @@ public class MessagesHub : Hub
                 await logoutHandle.Update<Userdto>();
                 foreach (var user in _userConnectionManager.GetAllUsers())
                 {
-                    if (user.Value.IsActive)
+                    if (user.Key != userIdLong.ToString())
                     {
-                        Console.WriteLine("VisiblityChange: Active");
-                        await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
-
-                    }
-                    else
-                    {
-                        Console.WriteLine("VisbilityChange Hidden,1 ");
-                        long vUserKey = long.Parse(user.Key);
-                        Console.WriteLine($"user.Key {user.Key}");
-                        Console.WriteLine($"long.Parse user.key {long.Parse(user.Key)}");
-                        Console.WriteLine($"vUserKEy: {vUserKey}");
-
-
-                        var getArrayModel = await _supabaseClient.From<Userdto>()
-                            .Where(n => n.Id == vUserKey && n.Deleted == false)
-                            .Single();
-
-                        // Handle OnlinePayload
-                        Dictionary<string, UserStatusDic> onlinePayload;
-                        if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
+                        if (user.Value.IsActive)
                         {
-                            Console.WriteLine("VisbilityChange Hidden,2 ");
+                            Console.WriteLine("VisiblityChange: Active");
+                            await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
 
-                            onlinePayload = new Dictionary<string, UserStatusDic>();
                         }
                         else
                         {
-                            Console.WriteLine("VisbilityChange Hidden,3 ");
+                            Console.WriteLine("VisbilityChange Hidden,1 ");
+                            long vUserKey = long.Parse(user.Key);
+                            
 
-                            onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
+                            var getArrayModel = await _supabaseClient.From<Userdto>()
+                                .Where(n => n.Id == vUserKey && n.Deleted == false)
+                                .Single();
+
+                            // Handle OnlinePayload
+                            Dictionary<string, UserStatusDic> onlinePayload;
+                            if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
+                            {
+                                Console.WriteLine("VisbilityChange Hidden,2 ");
+
+                                onlinePayload = new Dictionary<string, UserStatusDic>();
+                            }
+                            else
+                            {
+                                Console.WriteLine("VisbilityChange Hidden,3 ");
+
+                                onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
+                            }
+
+                            // Add or update the user's online status and last seen time
+                            onlinePayload[userIdLong.ToString()] = new UserStatusDic
+                            {
+                                IsActive = false,
+                                LastSeen = DateTime.UtcNow
+                            };
+
+                            // Serialize and store it back in the database
+                            getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
+                            await getArrayModel.Update<Userdto>();
+                            Console.WriteLine("VisbilityChange Hidden,4 ");
+
+                            Console.WriteLine("Updated OnlinePayload");
+
                         }
-
-                        // Add or update the user's online status and last seen time
-                        onlinePayload[userIdLong.ToString()] = new UserStatusDic
-                        {
-                            IsActive = false,
-                            LastSeen = DateTime.UtcNow
-                        };
-
-                        // Serialize and store it back in the database
-                        getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
-                        await getArrayModel.Update<Userdto>();
-                        Console.WriteLine("VisbilityChange Hidden,4 ");
-
-                        Console.WriteLine("Updated OnlinePayload");
-
                     }
+                        
                 }
                 //await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
             }
@@ -303,7 +311,7 @@ public class MessagesHub : Hub
                 _userConnectionManager.AddOrUpdateUser(userId, userInfo);
                 Console.WriteLine($"User {userIdLong} visibility changed to visible");
                 var logoutHandle = await _supabaseClient.From<Userdto>()
-                 .Where(n => n.Id == userIdLong)
+                 .Where(n => n.Id == userIdLong&& n.Deleted ==false)
                  .Single();
                 logoutHandle.Status = "true";
                 logoutHandle.LastSeen = DateTime.UtcNow;
@@ -313,51 +321,56 @@ public class MessagesHub : Hub
 
                 foreach (var user in _userConnectionManager.GetAllUsers())
                 {
-                    if (user.Value.IsActive)
+                    if (user.Key != userIdLong.ToString())
                     {
-                        Console.WriteLine("VisbilityChagne Visible, 3");
-                        await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
-
-                    }
-                    else
-                    {
-                        Console.WriteLine("VisbilityChagne Visible, 4");
-                        long visibleLong = long.Parse(user.Key);
-                        var getArrayModel = await _supabaseClient.From<Userdto>()
-                            .Where(n => n.Id == visibleLong && n.Deleted == false)
-                            .Single();
-                        Console.WriteLine("VisbilityChagne Visible, 5");
-
-                        // Handle OnlinePayload
-                        Dictionary<string, UserStatusDic> onlinePayload;
-                        if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
+                        if (user.Value.IsActive)
                         {
-                            Console.WriteLine("VisbilityChagne Visible, 6");
+                            Console.WriteLine("VisbilityChagne Visible, 3");
+                            await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
 
-                            onlinePayload = new Dictionary<string, UserStatusDic>();
                         }
                         else
                         {
-                            Console.WriteLine("VisbilityChagne Visible, 7");
+                            Console.WriteLine("VisbilityChagne Visible, 4");
+                            long visibleLong = long.Parse(user.Key);
+                            var getArrayModel = await _supabaseClient.From<Userdto>()
+                                .Where(n => n.Id == visibleLong && n.Deleted == false)
+                                .Single();
+                            Console.WriteLine("VisbilityChagne Visible, 5");
 
-                            onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
+                            // Handle OnlinePayload
+                            Dictionary<string, UserStatusDic> onlinePayload;
+                            if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
+                            {
+                                Console.WriteLine("VisbilityChagne Visible, 6");
+
+                                onlinePayload = new Dictionary<string, UserStatusDic>();
+                            }
+                            else
+                            {
+                                Console.WriteLine("VisbilityChagne Visible, 7");
+
+                                onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
+                            }
+
+                            // Add or update the user's online status and last seen time
+                            onlinePayload[userIdLong.ToString()] = new UserStatusDic
+                            {
+                                IsActive = true,
+                                LastSeen = DateTime.UtcNow
+                            };
+
+                            // Serialize and store it back in the database
+                            getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
+                            await getArrayModel.Update<Userdto>();
+                            Console.WriteLine("VisbilityChagne Visible, 8");
+
+                            Console.WriteLine("Updated OnlinePayload");
+
                         }
-
-                        // Add or update the user's online status and last seen time
-                        onlinePayload[userIdLong.ToString()] = new UserStatusDic
-                        {
-                            IsActive = true,
-                            LastSeen = DateTime.UtcNow
-                        };
-
-                        // Serialize and store it back in the database
-                        getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
-                        await getArrayModel.Update<Userdto>();
-                        Console.WriteLine("VisbilityChagne Visible, 8");
-
-                        Console.WriteLine("Updated OnlinePayload");
-
                     }
+
+                        
                 }
                 //await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
             }
@@ -389,51 +402,55 @@ public class MessagesHub : Hub
 
         foreach (var user in _userConnectionManager.GetAllUsers())
         {
-            if (user.Value.IsActive)
+            if (user.Key != userIdLong.ToString())
             {
-                Console.WriteLine("UserLogginOut: active");
-                await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
-
-            }
-            else
-            {
-                Console.WriteLine("UserLoggintOut, 1");
-                long logoutLong = long.Parse(user.Key);
-                var getArrayModel = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Id == logoutLong && n.Deleted == false)
-                    .Single();
-                Console.WriteLine("UserLoggintOut, 2");
-
-                // Handle OnlinePayload
-                Dictionary<string, UserStatusDic> onlinePayload;
-                if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
+                if (user.Value.IsActive)
                 {
-                    Console.WriteLine("UserLoggintOut, 3");
+                    Console.WriteLine("UserLogginOut: active");
+                    await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
 
-                    onlinePayload = new Dictionary<string, UserStatusDic>();
                 }
                 else
                 {
-                    Console.WriteLine("UserLoggintOut, 4");
+                    Console.WriteLine("UserLoggintOut, 1");
+                    long logoutLong = long.Parse(user.Key);
+                    var getArrayModel = await _supabaseClient.From<Userdto>()
+                        .Where(n => n.Id == logoutLong && n.Deleted == false)
+                        .Single();
+                    Console.WriteLine("UserLoggintOut, 2");
 
-                    onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
+                    // Handle OnlinePayload
+                    Dictionary<string, UserStatusDic> onlinePayload;
+                    if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
+                    {
+                        Console.WriteLine("UserLoggintOut, 3");
+
+                        onlinePayload = new Dictionary<string, UserStatusDic>();
+                    }
+                    else
+                    {
+                        Console.WriteLine("UserLoggintOut, 4");
+
+                        onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
+                    }
+
+                    // Add or update the user's online status and last seen time
+                    onlinePayload[userIdLong.ToString()] = new UserStatusDic
+                    {
+                        IsActive = false,
+                        LastSeen = DateTime.UtcNow
+                    };
+
+                    // Serialize and store it back in the database
+                    getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
+                    await getArrayModel.Update<Userdto>();
+                    Console.WriteLine("UserLoggintOut, 5");
+
+                    Console.WriteLine("Updated OnlinePayload");
+
                 }
-
-                // Add or update the user's online status and last seen time
-                onlinePayload[userIdLong.ToString()] = new UserStatusDic
-                {
-                    IsActive = false,
-                    LastSeen = DateTime.UtcNow
-                };
-
-                // Serialize and store it back in the database
-                getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
-                await getArrayModel.Update<Userdto>();
-                Console.WriteLine("UserLoggintOut, 5");
-
-                Console.WriteLine("Updated OnlinePayload");
-
             }
+                
         }
 
         //await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
@@ -467,51 +484,56 @@ public class MessagesHub : Hub
 
                 foreach (var user in _userConnectionManager.GetAllUsers())
                 {
-                    if (user.Value.IsActive)
+                    if (user.Key != userIdLong.ToString())
                     {
-                        Console.WriteLine("Online: Active");
-                        await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
-
-                    }
-                    else
-                    {
-                        Console.WriteLine("OlineOffline, 1");
-                        long onlineLong = long.Parse(user.Key);
-                        var getArrayModel = await _supabaseClient.From<Userdto>()
-                            .Where(n => n.Id == onlineLong && n.Deleted == false)
-                            .Single();
-                        Console.WriteLine("OlineOffline, 2");
-
-                        // Handle OnlinePayload
-                        Dictionary<string, UserStatusDic> onlinePayload;
-                        if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
+                        if (user.Value.IsActive)
                         {
-                            Console.WriteLine("OlineOffline, 3");
+                            Console.WriteLine("Online: Active");
+                            await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
 
-                            onlinePayload = new Dictionary<string, UserStatusDic>();
                         }
                         else
                         {
-                            Console.WriteLine("OlineOffline, 4");
+                            Console.WriteLine("OlineOffline, 1");
+                            long onlineLong = long.Parse(user.Key);
+                            var getArrayModel = await _supabaseClient.From<Userdto>()
+                                .Where(n => n.Id == onlineLong && n.Deleted == false)
+                                .Single();
+                            Console.WriteLine("OlineOffline, 2");
 
-                            onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
+                            // Handle OnlinePayload
+                            Dictionary<string, UserStatusDic> onlinePayload;
+                            if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
+                            {
+                                Console.WriteLine("OlineOffline, 3");
+
+                                onlinePayload = new Dictionary<string, UserStatusDic>();
+                            }
+                            else
+                            {
+                                Console.WriteLine("OlineOffline, 4");
+
+                                onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
+                            }
+
+                            // Add or update the user's online status and last seen time
+                            onlinePayload[userIdLong.ToString()] = new UserStatusDic
+                            {
+                                IsActive = true,
+                                LastSeen = DateTime.UtcNow
+                            };
+
+                            // Serialize and store it back in the database
+                            getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
+                            await getArrayModel.Update<Userdto>();
+                            Console.WriteLine("OlineOffline, 5");
+
+                            Console.WriteLine("Updated OnlinePayload");
+
                         }
-
-                        // Add or update the user's online status and last seen time
-                        onlinePayload[userIdLong.ToString()] = new UserStatusDic
-                        {
-                            IsActive = true,
-                            LastSeen = DateTime.UtcNow
-                        };
-
-                        // Serialize and store it back in the database
-                        getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
-                        await getArrayModel.Update<Userdto>();
-                        Console.WriteLine("OlineOffline, 5");
-
-                        Console.WriteLine("Updated OnlinePayload");
-
                     }
+
+                        
                 }
                 //await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
             }

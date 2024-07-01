@@ -426,9 +426,9 @@ namespace LiveChat.Controllers
                 else
                 {
                     Console.WriteLine("3");
-
+                    long longConv = long.Parse(user.Key);
                     var getArrayModel = await _supabaseClient.From<Userdto>()
-                     .Where(n => n.Id == long.Parse(user.Key) && n.Deleted == false)
+                     .Where(n => n.Id == longConv && n.Deleted == false)
                      .Single();
                     Console.WriteLine("4");
 
@@ -504,9 +504,9 @@ namespace LiveChat.Controllers
                         else
                         {
                         Console.WriteLine($"UserKeyLong: {long.Parse(user.Key)} ,{user.Key}");
-
+                        long longUserProfile = long.Parse(user.Key);
                         var getArrayModel = await _supabaseClient.From<Userdto>()
-                           .Where(n => n.Id == long.Parse(user.Key) && n.Deleted == false)
+                           .Where(n => n.Id == longUserProfile && n.Deleted == false)
                            .Single();
                         Console.WriteLine("5");
 
