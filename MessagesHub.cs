@@ -153,9 +153,13 @@ public class MessagesHub : Hub
                 else
                 {
                     Console.WriteLine("OnDisconnected,3 ");
+                    long userKeyLong = long.Parse(user.Key);
+                    Console.WriteLine($"user.Key {user.Key}");
+                    Console.WriteLine($"long.Parse user.key {long.Parse(user.Key)}");
+                    Console.WriteLine($"vUserKEy: {userKeyLong}");
 
                     var getArrayModel = await _supabaseClient.From<Userdto>()
-                        .Where(n => n.Id == long.Parse(user.Key) && n.Deleted == false)
+                        .Where(n => n.Id == userKeyLong && n.Deleted == false)
                         .Single();
 
                     // Handle OnlinePayload
@@ -242,9 +246,14 @@ public class MessagesHub : Hub
                     else
                     {
                         Console.WriteLine("VisbilityChange Hidden,1 ");
+                        long vUserKey = long.Parse(user.Key);
+                        Console.WriteLine($"user.Key {user.Key}");
+                        Console.WriteLine($"long.Parse user.key {long.Parse(user.Key)}");
+                        Console.WriteLine($"vUserKEy: {vUserKey}");
+
 
                         var getArrayModel = await _supabaseClient.From<Userdto>()
-                            .Where(n => n.Id == long.Parse(user.Key) && n.Deleted == false)
+                            .Where(n => n.Id == vUserKey && n.Deleted == false)
                             .Single();
 
                         // Handle OnlinePayload
@@ -387,7 +396,7 @@ public class MessagesHub : Hub
             else
             {
                 Console.WriteLine("UserLoggintOut, 1");
-
+                
                 var getArrayModel = await _supabaseClient.From<Userdto>()
                     .Where(n => n.Id == long.Parse(user.Key) && n.Deleted == false)
                     .Single();
