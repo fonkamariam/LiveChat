@@ -70,9 +70,12 @@ public class MessagesHub : Hub
             else
             {
                 Console.WriteLine("OnConnected,1 ");
-
+                Console.WriteLine($"user.Key {user.Key}");
+                Console.WriteLine($"long.Parse user.key {long.Parse(user.Key)}");
+                Console.WriteLine($"vUserKEy: {vUserKey}");
+                long onConnectedLong = long.Parse(user.Key)
                 var getArrayModel = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Id == long.Parse(user.Key) && n.Deleted == false)
+                    .Where(n => n.Id == onConnectedLong && n.Deleted == false)
                     .Single();
                 Console.WriteLine("OnConnected,2 ");
 
@@ -321,9 +324,9 @@ public class MessagesHub : Hub
                     else
                     {
                         Console.WriteLine("VisbilityChagne Visible, 4");
-
+                        long visibleLong = long.Parse(user.Key);
                         var getArrayModel = await _supabaseClient.From<Userdto>()
-                            .Where(n => n.Id == long.Parse(user.Key) && n.Deleted == false)
+                            .Where(n => n.Id == visibleLong && n.Deleted == false)
                             .Single();
                         Console.WriteLine("VisbilityChagne Visible, 5");
 
@@ -396,9 +399,9 @@ public class MessagesHub : Hub
             else
             {
                 Console.WriteLine("UserLoggintOut, 1");
-                
+                long logoutLong = long.Parse(user.Key);
                 var getArrayModel = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Id == long.Parse(user.Key) && n.Deleted == false)
+                    .Where(n => n.Id == logoutLong && n.Deleted == false)
                     .Single();
                 Console.WriteLine("UserLoggintOut, 2");
 
@@ -474,9 +477,9 @@ public class MessagesHub : Hub
                     else
                     {
                         Console.WriteLine("OlineOffline, 1");
-
+                        long onlineLong = long.Parse(user.Key);
                         var getArrayModel = await _supabaseClient.From<Userdto>()
-                            .Where(n => n.Id == long.Parse(user.Key) && n.Deleted == false)
+                            .Where(n => n.Id == onlineLong && n.Deleted == false)
                             .Single();
                         Console.WriteLine("OlineOffline, 2");
 
