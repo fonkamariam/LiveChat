@@ -70,10 +70,8 @@ public class MessagesHub : Hub
             else
             {
                 Console.WriteLine("OnConnected,1 ");
-                Console.WriteLine($"user.Key {user.Key}");
-                Console.WriteLine($"long.Parse user.key {long.Parse(user.Key)}");
-                Console.WriteLine($"vUserKEy: {vUserKey}");
-                long onConnectedLong = long.Parse(user.Key)
+                
+                long onConnectedLong = long.Parse(user.Key);
                 var getArrayModel = await _supabaseClient.From<Userdto>()
                     .Where(n => n.Id == onConnectedLong && n.Deleted == false)
                     .Single();
