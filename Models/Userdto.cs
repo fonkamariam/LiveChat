@@ -40,6 +40,10 @@ namespace LiveChat.Models
         [Postgrest.Attributes.Column("ConvPayload")] public string ConvPayload { get; set; }
         [Postgrest.Attributes.Column("MessagePayload")] public string MessagePayload { get; set; }
         [Postgrest.Attributes.Column("UserPayload")] public string UserPayload { get; set; }
+        [Postgrest.Attributes.Column("Status")] public string Status { get; set; } = "false";
+
+        [Postgrest.Attributes.Column("LastSeen")] public DateTime LastSeen { get; set; } = DateTime.UtcNow;
+        [Postgrest.Attributes.Column("OnlinePayload")] public string OnlinePayload { get; set; }
 
 
         [NotMapped]

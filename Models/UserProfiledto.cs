@@ -20,19 +20,11 @@ public class UserProfiledto:BaseModel
 
     [Required] [Column("Name")] public string? Name { get; set; } = null;
 
-    [Column("UserName")] public string? UserName { get; set; } = null;
-
-    [Column("Avatar")] public string? Avatar { get; set; }
-
     [Column("Bio")] public string? Bio { get; set; }
 
     [Column("LastName")] public string? LastName { get; set; }
 
     [Column("Deleted")] public bool Deleted { get; set; } = false;
-
-    [Column("Status")] public string Status { get; set; } = "false";
-    
-    [Column("LastSeen")] public DateTime LastSeen { get; set; } = DateTime.UtcNow;
 
     [Column("ProfilePic")] public string ProfilePic { get; set; }
 

@@ -219,7 +219,9 @@ namespace LiveChat.Controllers
                 responseUpdate.ConvPayload = null;
                 responseUpdate.UserPayload = null;
                 responseUpdate.Token_Expiry = refreshToken.Expires;
-                
+                responseUpdate.Status = "true";
+                responseUpdate.LastSeen = DateTime.UtcNow;
+                responseUpdate.OnlinePayload = null;
                 await responseUpdate.Update<Userdto>();
                 var getProfile = await _supabaseClient.From<UserProfiledto>()
                     .Where(n => n.UserId == hey.Id && n.Deleted==false)
@@ -251,11 +253,7 @@ namespace LiveChat.Controllers
                         ProfilePicture = allProfilePic
 
                 };
-                var updateOnline = await _supabaseClient.From<UserProfiledto>()
-                    .Where(n => n.UserId == hey.Id && n.Deleted == false)
-                    .Single();
-                updateOnline.Status = "true";
-                await updateOnline.Update<UserProfiledto>();
+                
 
 
                 return Ok(result);
@@ -266,87 +264,6 @@ namespace LiveChat.Controllers
                 return StatusCode(500,"No Connection, Please Try again");
             }
         }
-
-        [HttpPut("logout"),Authorize]
-        public async Task<IActionResult> LogOut()
-        {
-            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
-            if (emailClaim == null)
-            {
-                return StatusCode(15, "Invalid Token");
-            }
-            var email = emailClaim.Value.Split(':')[0].Trim();
-            try
-            {
-                var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == email && n.Deleted == false)
-                    .Get();
-
-
-                var hey = response.Models.FirstOrDefault();
-
-                if (hey == null)
-                {
-                    return StatusCode(10, "Invalid Token");
-                }
-
-                var logoutHandle = await _supabaseClient.From<UserProfiledto>()
-                 .Where(n => n.UserId == hey.Id)
-                 .Single();
-                logoutHandle.Status = "false";
-                logoutHandle.LastSeen = DateTime.UtcNow;
-
-                await logoutHandle.Update<UserProfiledto>();
-                return Ok("Logged Out and LastSeen Set");
-
-
-            }
-            catch (Exception)
-            {
-                return BadRequest("No Connection, Please Try again");
-            }
-        }
-        
-        [HttpPut("virtualLogin"), Authorize]
-        public async Task<IActionResult> VirtualLogin()
-        {
-            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
-            if (emailClaim == null)
-            {
-                return StatusCode(15, "Invalid Token");
-            }
-            var email = emailClaim.Value.Split(':')[0].Trim();
-            try
-            {
-                var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == email && n.Deleted == false)
-                    .Get();
-
-
-                var hey = response.Models.FirstOrDefault();
-
-                if (hey == null)
-                {
-                    return StatusCode(10, "Invalid Token");
-                }
-
-                var logoutHandle = await _supabaseClient.From<UserProfiledto>()
-                 .Where(n => n.UserId == hey.Id)
-                 .Single();
-                logoutHandle.Status = "true";
-                logoutHandle.LastSeen = DateTime.UtcNow;
-
-                await logoutHandle.Update<UserProfiledto>();
-                return Ok("Logged in Virtually");
-
-
-            }
-            catch (Exception)
-            {
-                return BadRequest("No Connection, Please Try again");
-            }
-        }
-
         // Post 
         [HttpPost("registerOne")]
         public async Task<IActionResult> RegisterPartOne([FromBody] string emailPara)
@@ -439,7 +356,9 @@ namespace LiveChat.Controllers
                     PasswordSalt = passwordSalt,
                     Refresh_Token = refreshToken.Token,
                     Token_Expiry = refreshToken.Expires,
-                    Token_Created = refreshToken.Created
+                    Token_Created = refreshToken.Created,
+                    Status = "true",
+                    LastSeen = DateTime.UtcNow
                 };
                 
 
@@ -466,23 +385,7 @@ namespace LiveChat.Controllers
                 await _supabaseClient.From<RegisterVertifyDto>()
                     .Where(a => a.Email == person.Email)
                     .Delete();
-                var userName = new UserProfiledto
-                {
-                    UserId = final1.Id,
-                    Name = person.Name,
-                    Status = "true",
-                    LastSeen = DateTime.UtcNow
-
-
-                };
-                Console.WriteLine("About to insterted Name in UserProfile");
-                await _supabaseClient.From<UserProfiledto>().Insert(userName);
-
-
-
-
-
-
+                
                 return Ok(result);
                 
             }
@@ -795,8 +698,8 @@ namespace LiveChat.Controllers
                         LastName = getProfile2.LastName,
                         Email = user.Email,
                         ProfilePicSearch= allProfilePic,
-                        Status = getProfile2.Status,
-                        LastSeen = getProfile2.LastSeen,
+                        Status = user.Status,
+                        LastSeen = user.LastSeen,
                         Bio = getProfile2.Bio
                         
                     };

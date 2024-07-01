@@ -18,10 +18,8 @@ namespace LiveChat.Models
         public string LastName { get; set; }
         public bool Deleted { get; set; }
         public string Bio { get; set; }
-        public string Avatar { get; set; }
         public string ProfilePic { get; set; }
-        public string Status { get; set;}
-        public DateTime LastSeen { get; set; }
+        
     }
 
 }

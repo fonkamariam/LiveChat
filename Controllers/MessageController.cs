@@ -144,7 +144,6 @@ namespace LiveChat.Controllers
                 var responseModels = response.Models.FirstOrDefault();
                 if (responseModels == null)
                 {
-
                     return BadRequest("Problem getting user profile in ws for conversation");
                 }
                 // for fetching email
@@ -163,9 +162,9 @@ namespace LiveChat.Controllers
                 // sending status,lastSeen,bio,ProfilePicConv
                 
 
-                payLoad.record.OnlineStatus = responseModels.Status;
+                payLoad.record.OnlineStatus = responseModels12.Status;
                 payLoad.record.Bio = responseModels.Bio;
-                payLoad.record.LastSeen = responseModels.LastSeen;
+                payLoad.record.LastSeen = responseModels12.LastSeen;
                 payLoad.record.ProfilePic = responseModels.ProfilePic;
                 payLoad.record.Email = responseModels12.Email;
 
@@ -397,8 +396,7 @@ namespace LiveChat.Controllers
             else
             {
                 Console.WriteLine("Problem, Message neither Upd,Del,Ins");
-            }
-            
+            }          
 
             return Ok();
         }
@@ -423,7 +421,7 @@ namespace LiveChat.Controllers
                 {
                     Console.WriteLine("2");
 
-                    await _hubContext.Clients.Client(user.Value.ConnectionId).SendAsync("Receive UserProfile", convPayLoad);
+                    await _hubContext.Clients.Client(user.Value.ConnectionId).SendAsync("Receive Conversation", convPayLoad);
                 }
                 else
                 {
@@ -505,7 +503,7 @@ namespace LiveChat.Controllers
                         }
                         else
                         {
-                        Console.WriteLine("4");
+                        Console.WriteLine($"UserKeyLong: {long.Parse(user.Key)} ,{user.Key}");
 
                         var getArrayModel = await _supabaseClient.From<Userdto>()
                            .Where(n => n.Id == long.Parse(user.Key) && n.Deleted == false)
@@ -593,30 +591,7 @@ namespace LiveChat.Controllers
                     Console.WriteLine("ZeroNotification DONE MESSAGE");
 
                     return Ok();
-                
-                /*
-                var notifications = Sender.Notification ?? new Dictionary<string, string>();
-                if (notifications.ContainsKey(convIdPara.ToString()))
-                {
-                    Console.WriteLine("found Conversation key with value in deleting notificaiton");
-                    Console.WriteLine(notifications[convIdPara.ToString()]);
-                    notifications[convIdPara.ToString()] = "0";
-                }
-                else
-                {
-                    Console.WriteLine("else, Not found key, setting default to zero when deleting notificaiton");
-                    notifications[convIdPara.ToString()] = "0";
-                }
-
-
-                // Serialize the updated notifications back to JSON
-                Sender.Notification = notifications;
-
-                // Update the UserProfiledto record in the database
-                await _supabaseClient.From<Userdto>().Update(Sender);
-                Console.WriteLine("End of Notification");
-                // END HERE NOTIFICATION
-                */
+                      
 
                
             }
@@ -665,32 +640,7 @@ namespace LiveChat.Controllers
                     return Ok();
                 }
                 
-                return Ok();
-
-                /*
-                var notifications = Sender.Notification ?? new Dictionary<string, string>();
-                if (notifications.ContainsKey(convIdPara.ToString()))
-                {
-                    Console.WriteLine("found Conversation key with value in deleting notificaiton");
-                    Console.WriteLine(notifications[convIdPara.ToString()]);
-                    notifications[convIdPara.ToString()] = "0";
-                }
-                else
-                {
-                    Console.WriteLine("else, Not found key, setting default to zero when deleting notificaiton");
-                    notifications[convIdPara.ToString()] = "0";
-                }
-
-
-                // Serialize the updated notifications back to JSON
-                Sender.Notification = notifications;
-
-                // Update the UserProfiledto record in the database
-                await _supabaseClient.From<Userdto>().Update(Sender);
-                Console.WriteLine("End of Notification");
-                // END HERE NOTIFICATION
-                */
-
+                return Ok();          
 
             }
             catch (Exception ex)
@@ -1335,7 +1285,6 @@ namespace LiveChat.Controllers
             }
         }
 
-
         [HttpGet("GetAllConversationDirect"), Authorize] 
         
         public async Task<IActionResult> GetAllConversationDirect()
@@ -1465,9 +1414,9 @@ namespace LiveChat.Controllers
                         ConvId = convId,
                         LastName = getProfile2.LastName,
                         MessageId = LastMessageId,
-                        Status = getProfile2.Status,
+                        Status = getEmail.Status,
                         NotificationCount= getContentNoti,
-                        LastSeen = getProfile2.LastSeen,
+                        LastSeen = getEmail.LastSeen,
                         Bio = getProfile2.Bio,
                         Email = getEmail.Email,
                         IsAudio= isaudio,
