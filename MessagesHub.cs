@@ -399,7 +399,7 @@ public class MessagesHub : Hub
             .Single();
         logoutHandle.Status = "false";
         DateTime dateTime = DateTime.UtcNow;
-        logoutHandle.LastSeen = dateTime
+        logoutHandle.LastSeen = dateTime;
         logoutHandle.OnlinePayload = null;
 
         await logoutHandle.Update<Userdto>();
