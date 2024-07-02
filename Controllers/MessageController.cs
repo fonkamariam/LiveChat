@@ -190,7 +190,7 @@ namespace LiveChat.Controllers
                     if (_userConnectionManager.TryGetValue(recp.ToString(), out var userInfo) && userInfo.IsActive)
                     {
                         // Send message to active recipient
-                        Console.WriteLine("INSERT Message Payload:   Active");
+                        Console.WriteLine($"INSERT Message Payload: {recp.ToString()}   Active");
 
                         await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
                     }
