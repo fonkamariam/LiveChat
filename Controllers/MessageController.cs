@@ -58,7 +58,7 @@ namespace LiveChat.Controllers
 
                 var allPayloads = new List<object>();
                 Console.WriteLine("1");
-                if (response.MessagePayload == null && response.UserPayload == null && response.ConvPayload == null)
+                if (response.MessagePayload == null && response.UserPayload == null && response.ConvPayload == null && response.OnlinePayload == null)
                 {
                     Console.WriteLine("1.5");
 
@@ -98,11 +98,20 @@ namespace LiveChat.Controllers
 
                 }
                 Console.WriteLine("5");
+                if (response.OnlinePayload != null)
+                {
+                    Console.WriteLine("5.5");
 
+                    var allOnlinePayloads = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(response.OnlinePayload);
+                    var allOnlinePayloadsArray = allOnlinePayloads.Select(kvp => new { Key = kvp.Key, Value = kvp.Value }).ToArray();
+                    allPayloads.AddRange(allOnlinePayloadsArray);
+                    Console.WriteLine("5.6");
+                }
                 // Clear the payloads
                 response.MessagePayload = null;
                 response.ConvPayload = null;
                 response.UserPayload = null;
+                response.OnlinePayload = null;
 
                 await response.Update<Userdto>();
                 Console.WriteLine("6");

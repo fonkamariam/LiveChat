@@ -67,7 +67,6 @@ public class MessagesHub : Hub
                 {
                     Console.WriteLine("OnConnected:Active user, Online sent");
                     await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
-
                 }
                 else
                 {
@@ -103,10 +102,9 @@ public class MessagesHub : Hub
 
                     // Serialize and store it back in the database
                     getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
+
                     await getArrayModel.Update<Userdto>();
                     Console.WriteLine("OnConnected,5 ");
-
-
 
                 }
             }
@@ -135,6 +133,10 @@ public class MessagesHub : Hub
                  .Single();
         logoutHandle.Status = "false";
         logoutHandle.LastSeen = DateTime.UtcNow;
+        logoutHandle.OnlinePayload = null;
+        logoutHandle.ConvPayload = null;
+        logoutHandle.UserPayload = null;
+        logoutHandle.OnlinePayload = null;
 
         await logoutHandle.Update<Userdto>();
         Console.WriteLine("OnDisconnected,2 ");
