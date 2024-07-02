@@ -1393,14 +1393,14 @@ namespace LiveChat.Controllers
                     }
                     
                     var getProfile = await _supabaseClient.From<UserProfiledto>()
-                        .Where(n => n.UserId == UserId)
+                        .Where(n => n.UserId == UserId && n.Deleted == false)
                         .Get();
                     var getProfile2 = getProfile.Models.FirstOrDefault();
                     var userName = getProfile2.Name;
                     
                     // Get user Email
                     var getConvEmail = await _supabaseClient.From<Userdto>()
-                        .Where(n=>n.Id == UserId)
+                        .Where(n=>n.Id == UserId && n.Deleted == false)
                         .Get();
                     var getEmail = getConvEmail.Models.FirstOrDefault();
 

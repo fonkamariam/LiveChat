@@ -46,7 +46,8 @@ public class MessagesHub : Hub
          .Where(n => n.Id == userIdLong)
          .Single();
         logoutHandle.Status = "true";
-        logoutHandle.LastSeen = DateTime.UtcNow;
+        DateTime dateTime = DateTime.UtcNow;
+        logoutHandle.LastSeen = dateTime;
 
         await logoutHandle.Update<Userdto>();
 
@@ -66,7 +67,7 @@ public class MessagesHub : Hub
                 if (user.Value.IsActive)
                 {
                     Console.WriteLine("OnConnected:Active user, Online sent");
-                    await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
+                    await Clients.All.SendAsync("UserStatusChanged", userIdLong, true,dateTime);
                 }
                 else
                 {
@@ -97,7 +98,7 @@ public class MessagesHub : Hub
                     onlinePayload[userIdLong.ToString()] = new UserStatusDic
                     {
                         IsActive = true,
-                        LastSeen = DateTime.UtcNow
+                        LastSeen = dateTime
                     };
 
                     // Serialize and store it back in the database
@@ -132,7 +133,8 @@ public class MessagesHub : Hub
                  .Where(n => n.Id == userIdLong)
                  .Single();
         logoutHandle.Status = "false";
-        logoutHandle.LastSeen = DateTime.UtcNow;
+        DateTime dateTime = DateTime.UtcNow;
+        logoutHandle.LastSeen = dateTime;
         logoutHandle.OnlinePayload = null;
         logoutHandle.ConvPayload = null;
         logoutHandle.UserPayload = null;
@@ -157,7 +159,7 @@ public class MessagesHub : Hub
                     if (user.Value.IsActive)
                     {
                         Console.WriteLine("OnDisconnected: Active");
-                        await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
+                        await Clients.All.SendAsync("UserStatusChanged", userIdLong, false,dateTime);
 
                     }
                     else
@@ -188,7 +190,7 @@ public class MessagesHub : Hub
                         onlinePayload[userIdLong.ToString()] = new UserStatusDic
                         {
                             IsActive = false,
-                            LastSeen = DateTime.UtcNow
+                            LastSeen = dateTime
                         };
 
                         // Serialize and store it back in the database
@@ -242,7 +244,8 @@ public class MessagesHub : Hub
                  .Where(n => n.Id == userIdLong)
                  .Single();
                 logoutHandle.Status = "false";
-                logoutHandle.LastSeen = DateTime.UtcNow;
+                DateTime dateTime = DateTime.UtcNow;
+                logoutHandle.LastSeen = dateTime;
 
                 await logoutHandle.Update<Userdto>();
                 foreach (var user in _userConnectionManager.GetAllUsers())
@@ -252,7 +255,7 @@ public class MessagesHub : Hub
                         if (user.Value.IsActive)
                         {
                             Console.WriteLine("VisiblityChange: Active");
-                            await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
+                            await Clients.All.SendAsync("UserStatusChanged", userIdLong, false, dateTime);
 
                         }
                         else
@@ -284,7 +287,7 @@ public class MessagesHub : Hub
                             onlinePayload[userIdLong.ToString()] = new UserStatusDic
                             {
                                 IsActive = false,
-                                LastSeen = DateTime.UtcNow
+                                LastSeen = dateTime
                             };
 
                             // Serialize and store it back in the database
@@ -316,7 +319,9 @@ public class MessagesHub : Hub
                  .Where(n => n.Id == userIdLong&& n.Deleted ==false)
                  .Single();
                 logoutHandle.Status = "true";
-                logoutHandle.LastSeen = DateTime.UtcNow;
+                DateTime dateTime = DateTime.UtcNow;
+                logoutHandle.LastSeen = dateTime;
+
 
                 await logoutHandle.Update<Userdto>();
                 Console.WriteLine("VisbilityChange Visible,2 ");
@@ -328,7 +333,7 @@ public class MessagesHub : Hub
                         if (user.Value.IsActive)
                         {
                             Console.WriteLine("VisbilityChagne Visible, 3");
-                            await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
+                            await Clients.All.SendAsync("UserStatusChanged", userIdLong, true, dateTime);
 
                         }
                         else
@@ -359,7 +364,7 @@ public class MessagesHub : Hub
                             onlinePayload[userIdLong.ToString()] = new UserStatusDic
                             {
                                 IsActive = true,
-                                LastSeen = DateTime.UtcNow
+                                LastSeen = dateTime
                             };
 
                             // Serialize and store it back in the database
@@ -393,7 +398,8 @@ public class MessagesHub : Hub
             .Where(n => n.Id == userIdLong)
             .Single();
         logoutHandle.Status = "false";
-        logoutHandle.LastSeen = DateTime.UtcNow;
+        DateTime dateTime = DateTime.UtcNow;
+        logoutHandle.LastSeen = dateTime
         logoutHandle.OnlinePayload = null;
 
         await logoutHandle.Update<Userdto>();
@@ -409,7 +415,7 @@ public class MessagesHub : Hub
                 if (user.Value.IsActive)
                 {
                     Console.WriteLine("UserLogginOut: active");
-                    await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
+                    await Clients.All.SendAsync("UserStatusChanged", userIdLong, false,dateTime);
 
                 }
                 else
@@ -440,7 +446,7 @@ public class MessagesHub : Hub
                     onlinePayload[userIdLong.ToString()] = new UserStatusDic
                     {
                         IsActive = false,
-                        LastSeen = DateTime.UtcNow
+                        LastSeen = dateTime
                     };
 
                     // Serialize and store it back in the database
@@ -479,7 +485,8 @@ public class MessagesHub : Hub
                    .Where(n => n.Id == userIdLong)
                    .Single();
                 logoutHandle.Status = "true";
-                logoutHandle.LastSeen = DateTime.UtcNow;
+                DateTime dateTime = DateTime.UtcNow;
+                logoutHandle.LastSeen = dateTime;
 
                 await logoutHandle.Update<Userdto>();
 
@@ -491,7 +498,7 @@ public class MessagesHub : Hub
                         if (user.Value.IsActive)
                         {
                             Console.WriteLine("Online: Active");
-                            await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
+                            await Clients.All.SendAsync("UserStatusChanged", userIdLong, true,dateTime);
 
                         }
                         else
@@ -522,7 +529,7 @@ public class MessagesHub : Hub
                             onlinePayload[userIdLong.ToString()] = new UserStatusDic
                             {
                                 IsActive = true,
-                                LastSeen = DateTime.UtcNow
+                                LastSeen = dateTime
                             };
 
                             // Serialize and store it back in the database
