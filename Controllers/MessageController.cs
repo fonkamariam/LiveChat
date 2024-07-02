@@ -36,6 +36,7 @@ namespace LiveChat.Controllers
             _hubContext = hubContext;
             _userConnectionManager = userConnectionManager;
         }
+
         [HttpGet("GetMissedPayloads"),Authorize]
         public async Task<IActionResult> GetMissedPayloads()
         {
@@ -193,6 +194,8 @@ namespace LiveChat.Controllers
                         Console.WriteLine($"INSERT Message Payload: {recp.ToString()}   Active");
 
                         await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
+                        Console.WriteLine("await _hubcontext");
+
                     }
                     else 
                     {
