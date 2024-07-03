@@ -32,5 +32,7 @@ namespace LiveChat.Models
         public bool IsImage { get; set; }
 
         public List<string> ProfilePicConv { get; set;}
+
+        public bool Deleted { get; set; }
     }
 }

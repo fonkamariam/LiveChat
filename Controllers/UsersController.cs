@@ -588,10 +588,10 @@ namespace LiveChat.Controllers
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
             {
-                return StatusCode(15, "Invalid Token");
+                return Unauthorized("Invalid Token");
             }
             var email = emailClaim.Value.Split(':')[0].Trim();
-            try
+            try 
             {
                 var response = await _supabaseClient.From<Userdto>()
                     .Where(n => n.Email == email && n.Deleted == false)
@@ -602,23 +602,26 @@ namespace LiveChat.Controllers
 
                 if (hey == null)
                 {
-                    return StatusCode(10, "Invalid Token");
+                    return Unauthorized("Invalid Token");
                 }
 
                 var responseUpdate = await _supabaseClient.From<Userdto>()
-                 .Where(n => n.Id == hey.Id)
+                 .Where(n => n.Id == hey.Id && n.Deleted == false)
                  .Single();
                 
                 responseUpdate.Email = responseUpdate.Email + "@" + responseUpdate.Id;
                 
                 responseUpdate.Deleted = true;
+                responseUpdate.Status = false;
+                
 
                 await responseUpdate.Update<Userdto>();
                 // Delete UserProfile
                 var responseUpdateProfile = await _supabaseClient.From<UserProfiledto>()
-                 .Where(n => n.UserId == hey.Id)
+                 .Where(n => n.UserId == hey.Id && n.Deleted == false)
                  .Single();
                 responseUpdateProfile.Deleted = true;
+                
 
                 await responseUpdateProfile.Update<UserProfiledto>();
 

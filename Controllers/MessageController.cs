@@ -1393,7 +1393,7 @@ namespace LiveChat.Controllers
                     }
                     
                     var getProfile = await _supabaseClient.From<UserProfiledto>()
-                        .Where(n => n.UserId == UserId && n.Deleted == false)
+                        .Where(n => n.UserId == UserId)
                         .Get();
                     var getProfile2 = getProfile.Models.FirstOrDefault();
                     var userName = getProfile2.Name;
@@ -1434,7 +1434,8 @@ namespace LiveChat.Controllers
                         IsAudio= isaudio,
                         IsImage = isimage,
                         ProfilePicConv= allProfilePic,
-                        MessageSender = messageSender200
+                        MessageSender = messageSender200,
+                        Deleted = getProfile2.Deleted
                     }; 
                         allyouNeed.Add(xz);
                     }
