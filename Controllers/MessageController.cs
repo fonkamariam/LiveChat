@@ -1400,7 +1400,7 @@ namespace LiveChat.Controllers
                     
                     // Get user Email
                     var getConvEmail = await _supabaseClient.From<Userdto>()
-                        .Where(n=>n.Id == UserId && n.Deleted == false)
+                        .Where(n=>n.Id == UserId)
                         .Get();
                     var getEmail = getConvEmail.Models.FirstOrDefault();
 
