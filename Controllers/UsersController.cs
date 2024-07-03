@@ -612,7 +612,7 @@ namespace LiveChat.Controllers
                 responseUpdate.Email = responseUpdate.Email + "@" + responseUpdate.Id;
                 
                 responseUpdate.Deleted = true;
-                responseUpdate.Status = false;
+                responseUpdate.Status = "false";
                 
 
                 await responseUpdate.Update<Userdto>();
