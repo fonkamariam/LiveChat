@@ -489,8 +489,7 @@ namespace LiveChat.Controllers
         [HttpPost("WebSocketUser")]
         public async Task<IActionResult> HandleUserEvent([FromBody] object payloadObject)
         {
-            Console.WriteLine("1");
-
+            
             if (payloadObject == null)
             {
                 Console.WriteLine("the paramerter returned is Null");
@@ -500,8 +499,7 @@ namespace LiveChat.Controllers
             // Cast the payload to a JObject
             string x = payloadObject.ToString();
             UserPayLoad userPayLoad = JsonConvert.DeserializeObject<UserPayLoad>(x);
-            Console.WriteLine("2");
-
+            
 
             if (userPayLoad.type == "UPDATE")
             {
@@ -509,37 +507,29 @@ namespace LiveChat.Controllers
                     {
                         if (user.Value.IsActive)
                         {
-                        Console.WriteLine("3");
-
+                        
                         await _hubContext.Clients.Client(user.Value.ConnectionId).SendAsync("Receive UserProfile", userPayLoad);
                         }
                         else
                         {
-                        Console.WriteLine($"UserKeyLong: {long.Parse(user.Key)} ,{user.Key}");
                         long longUserProfile = long.Parse(user.Key);
                         var getArrayModel = await _supabaseClient.From<Userdto>()
                            .Where(n => n.Id == longUserProfile && n.Deleted == false)
                            .Single();
-                        Console.WriteLine("5");
-
+                        
                         //var getArrayModel = getArray.Models.FirstOrDefault();
                         if (getArrayModel.UserPayload == null)
                         {
-                            Console.WriteLine("6");
-
+                            
                             List<UserPayLoad> emptyProfilePic = [];
                             emptyProfilePic.Add(userPayLoad);
                             string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
                             getArrayModel.UserPayload = jsonListEmpty;
                             await getArrayModel.Update<Userdto>();
-                            Console.WriteLine("7");
-
-                            Console.WriteLine("ADded empty");
                             return Ok("Added to an empty array");
                         }
 
-                        Console.WriteLine("8");
-
+                        
                         List<UserPayLoad> allProfilePic = JsonConvert.DeserializeObject<List<UserPayLoad>>(getArrayModel.UserPayload);
 
                         allProfilePic.Add(userPayLoad);
@@ -550,11 +540,9 @@ namespace LiveChat.Controllers
 
 
                         getArrayModel.UserPayload = jsonList;
-                        Console.WriteLine("10");
-
+                        
                         await getArrayModel.Update<Userdto>();
-                        Console.WriteLine("aDDed Payload");
-
+                        
                         // Store payload for inactive recipient
                         //Console.WriteLine($"Inserted to Stored for userId:{recp}");
                         //await StorePayloadForUserAsync(recp, payLoad);

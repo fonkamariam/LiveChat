@@ -431,4 +431,17 @@ public class MessagesHub : Hub
 
         //await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
     }
+
+    public async Task TypingIndicator(long idPara,bool valuePara)
+    {
+        var userIdclaim = Context.User.Claims.FirstOrDefault(c => c.Type == "UserId");
+        if (userIdclaim == null) return;
+
+        var userId = userIdclaim.Value.Split(':')[0].Trim();
+        long userIdLong = long.Parse(userId);
+        
+        await Clients.Group(idPara.ToString()).SendAsync("Typing", userIdLong,valuePara);
+
+    }
+
 }
