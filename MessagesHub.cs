@@ -28,7 +28,7 @@ public class MessagesHub : Hub
         _supabaseClient = supabaseClient;
         _userConnectionManager = userConnectionManager;
         // Set up a periodic check for user heartbeats
-        var timer = new System.Timers.Timer(7000); // Check every 30 seconds
+        var timer = new System.Timers.Timer(3000); // Check every 30 seconds
         timer.Elapsed += CheckUserHeartbeats;
         timer.AutoReset = true;
         timer.Enabled = true;
@@ -255,8 +255,7 @@ public class MessagesHub : Hub
                         // Serialize and store it back in the database
                         getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
                         await getArrayModel.Update<Userdto>();
-                        Console.WriteLine("OnDisconnected,6");
-
+                       
                         
                     }
                 }
