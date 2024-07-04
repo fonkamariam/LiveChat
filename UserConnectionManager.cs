@@ -31,5 +31,6 @@ using System.Collections.Concurrent;
     {
         public string ConnectionId { get; set; }
         public bool IsActive { get; set; }
-    }
+        public DateTime LastHeartbeat { get; set; }
+}
 
