@@ -12,7 +12,6 @@ using Supabase.Interfaces;
 using Microsoft.Extensions.Configuration;
 using LiveChat.Models;
 using Newtonsoft.Json;
-using System.Timers;
 
 [Authorize]
 public class MessagesHub : Hub
@@ -27,77 +26,9 @@ public class MessagesHub : Hub
         _configuration = configuration;
         _supabaseClient = supabaseClient;
         _userConnectionManager = userConnectionManager;
-        // Set up a periodic check for user heartbeats
-        var timer = new System.Timers.Timer(3000); // Check every 30 seconds
-        timer.Elapsed += CheckUserHeartbeats;
-        timer.AutoReset = true;
-        timer.Enabled = true;
+        
     }
-    private async void CheckUserHeartbeats(Object source, System.Timers.ElapsedEventArgs e)
-    {
-        var threshold = DateTime.UtcNow.AddSeconds(-7); // Users who haven't sent a heartbeat in the last 30 seconds
-        foreach (var user in _userConnectionManager.GetAllUsers())
-        {
-            if (user.Value.LastHeartbeat < threshold)
-            {
-                // User is considered offline
-                user.Value.IsActive = false;
-                _userConnectionManager.AddOrUpdateUser(user.Key, user.Value);
-
-                // Notify other users about the status change
-                var userIdLong = long.Parse(user.Key);
-                DateTime dateTime = DateTime.UtcNow;
-
-                var logoutHandle = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Id == userIdLong && n.Deleted == false)
-                    .Single();
-                logoutHandle.Status = "false";
-                logoutHandle.LastSeen = dateTime;
-                await logoutHandle.Update<Userdto>();
-
-                foreach (var otherUser in _userConnectionManager.GetAllUsers())
-                {
-                    if (otherUser.Key != user.Key)
-                    {
-                        if (otherUser.Value.IsActive)
-                        {
-                            await Clients.All.SendAsync("UserStatusChanged", userIdLong, false, dateTime);
-                        }
-                        else
-                        {
-                            long otherUserIdLong = long.Parse(otherUser.Key);
-                            var getArrayModel = await _supabaseClient.From<Userdto>()
-                                .Where(n => n.Id == otherUserIdLong && n.Deleted == false)
-                                .Single();
-
-                            // Handle OnlinePayload
-                            Dictionary<string, UserStatusDic> onlinePayload;
-                            if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
-                            {
-                                onlinePayload = new Dictionary<string, UserStatusDic>();
-                            }
-                            else
-                            {
-                                onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
-                            }
-
-                            // Add or update the user's online status and last seen time
-                            onlinePayload[userIdLong.ToString()] = new UserStatusDic
-                            {
-                                IsActive = false,
-                                LastSeen = dateTime
-                            };
-
-                            // Serialize and store it back in the database
-                            getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
-                            await getArrayModel.Update<Userdto>();
-                        }
-                    }
-                }
-            }
-        }
-    }
-
+    
     public override async Task OnConnectedAsync()
     {
         
@@ -499,20 +430,5 @@ public class MessagesHub : Hub
         }
 
         //await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
-    }
-
-    
-    public async Task Heartbeat()
-    {
-        var userIdclaim = Context.User.Claims.FirstOrDefault(c => c.Type == "UserId");
-        if (userIdclaim == null) return;
-
-        var userId = userIdclaim.Value.Split(':')[0].Trim();
-        Console.WriteLine("HeartBeat Invoked");
-        if (_userConnectionManager.TryGetValue(userId, out var userInfo))
-        {
-            userInfo.LastHeartbeat = DateTime.UtcNow;
-            _userConnectionManager.AddOrUpdateUser(userId, userInfo);
-        }
     }
 }
