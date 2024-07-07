@@ -733,7 +733,6 @@ namespace LiveChat.Controllers
                     IsImage = messageUser.IsImage,
                     IsAudio = messageUser.IsAudio,
                     New = Sender.Id != messageUser.RecpientId ? true : false
-
                 };
                 // Create a new Message Table with a convId of NULL temporarily
 
@@ -741,16 +740,13 @@ namespace LiveChat.Controllers
                 var messageResposne = insertMessage.Models.FirstOrDefault();
 
                 // create a new row in the conversation table
-
-
-
                 // update the NULL convId back
                 // Console.WriteLine("Updating Last Message id in Conv table ");
 
 
                 var responseUpdateMessageId = await _supabaseClient.From<ConversationDto>()
-                                                .Where(n => n.ConvId == newConvResponse.ConvId)
-                                                .Single();
+                    .Where(n => n.ConvId == newConvResponse.ConvId)
+                    .Single();
 
                 responseUpdateMessageId.LastMessage = messageResposne.Id;
                 await responseUpdateMessageId.Update<ConversationDto>();
@@ -759,28 +755,28 @@ namespace LiveChat.Controllers
                 //Console.WriteLine("Updated last Message Id in conversation Table");
 
                 ParticipantDto newParticipant1 = new ParticipantDto
-                                            {
-                                                UserId = Sender.Id,
-                                                ConversationId = newConvResponse.ConvId
-                                            };
-                                            ParticipantDto newParticipant2 = new ParticipantDto
-                                            {
-                                                UserId = messageUser.RecpientId,
-                                                ConversationId = newConvResponse.ConvId
-                                            };
+                    {
+                        UserId = Sender.Id,
+                        ConversationId = newConvResponse.ConvId
+                    };
+                    ParticipantDto newParticipant2 = new ParticipantDto
+                    {
+                        UserId = messageUser.RecpientId,
+                        ConversationId = newConvResponse.ConvId
+                    };
 
-                                            var addNewParticipants1 = await _supabaseClient.From<ParticipantDto>()
-                                                .Insert(newParticipant1);
-                                            var addNewParticipants2 = await _supabaseClient.From<ParticipantDto>()
-                                                .Insert(newParticipant2);
+                    var addNewParticipants1 = await _supabaseClient.From<ParticipantDto>()
+                        .Insert(newParticipant1);
+                    var addNewParticipants2 = await _supabaseClient.From<ParticipantDto>()
+                        .Insert(newParticipant2);
                 //Console.WriteLine("Created Participants");
-                Noti = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Id == messageUser.RecpientId && n.Deleted == false)
-                    .Get();
-                var RecvieverNoti =var responseUpdateMessagefinal = await _supabaseClient.From<MessageDto>()
-                                                .Where(n => n.Id == messageResposne.Id)
-                                                .Get();
+                
+                var responseUpdateMessagefinal = await _supabaseClient.From<MessageDto>()
+                        .Where(n => n.Id == messageResposne.Id && n.Deleted == false)
+                        .Get();
                 var finalBound = responseUpdateMessagefinal.Models.FirstOrDefault();
+
+                 
                 //long convIdJson = newConvResponse.ConvId;
                 
                 return Ok(finalBound);
@@ -1136,7 +1132,6 @@ namespace LiveChat.Controllers
         }
 
         [HttpGet("GetAllConversationDirect"), Authorize] 
-        
         public async Task<IActionResult> GetAllConversationDirect()
         {
             
