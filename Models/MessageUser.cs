@@ -13,6 +13,8 @@
         public bool IsAudio { get; set; }
 
         public bool IsImage { get; set; }
+        
+        public long ConversationId {get; set;}
 
     }
 }

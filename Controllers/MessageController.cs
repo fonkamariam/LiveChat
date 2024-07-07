@@ -657,7 +657,7 @@ namespace LiveChat.Controllers
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
             {
-                return StatusCode(15, "Invalid Token");
+                return Unauthorized("Invalid Token");
             }
             var email = emailClaim.Value.Split(':')[0].Trim();
             try
@@ -669,164 +669,42 @@ namespace LiveChat.Controllers
 
                 if (Sender == null)
                 {
-                    return StatusCode(10, "Invalid Token");
+                    return Unauthorized("Invalid Token");
                 }
                 
-
-                var messageQuery = await _supabaseClient.From<MessageDto>()
-                    .Where(n => ((n.SenderId == Sender.Id && n.RecpientId == messageUser.RecpientId))) 
-                    .Where(n=> (n.Deleted == false))
-                    .Get();
-
-                var anotherMessageQuery = await _supabaseClient.From<MessageDto>()
-                    .Where(n => ((n.SenderId == messageUser.RecpientId && n.RecpientId == Sender.Id)))
-                    .Where(n => (n.Deleted == false))
-                    .Get();
-
-
+            // Decision: NOT A New Messsage #############
+            if (messageUser.ConversationId != 0 )
+            {
                 
-                // Two Decisions Made here....Is is their first ever chat(Create a ConvTable) or not(update ConvTable)
-                if (messageQuery.Models.Count != 0 || anotherMessageQuery.Models.Count!=0)
-                    {
-                    //Console.WriteLine("Decision: Not a new message");
-                    if (Sender.Id == messageUser.RecpientId)
-                    {                        
-                        var savedMessage = await _supabaseClient.From<MessageDto>()
-                            .Where(p => p.SenderId == messageUser.RecpientId && p.RecpientId ==messageUser.RecpientId)
-                            .Get();
-                        if(savedMessage.Models.Count == 0)
-                        {
-                            return BadRequest("Problem fetching own to own convID");
-                        }
-                        var convModel = savedMessage.Models.FirstOrDefault();
-                        MessageDto newMessageIfOwn = new MessageDto
-                        {
-                            TimeStamp = DateTime.UtcNow,
-                            MessageType = messageUser.MessageType,
-                            Status = "Sent",
-                            SenderId = Sender.Id,
-                            RecpientId = messageUser.RecpientId,
-                            Content = messageUser.Content,
-                            ConvId = convModel.ConvId,
-                            New= false
-                        };
-                        // Update the Conversation Table and insert into the message table
+                MessageDto newMessageIf = new MessageDto
+                {
+                    TimeStamp = DateTime.UtcNow,
+                    MessageType = messageUser.MessageType,
+                    Status = "Sent",
+                    SenderId = Sender.Id,
+                    RecpientId = messageUser.RecpientId,
+                    Content = messageUser.Content,
+                    ConvId = messageUser.ConversationId,
+                    IsAudio = messageUser.IsAudio,
+                    IsImage = messageUser.IsImage,
+                    New = Sender.Id != messageUser.RecpientId ? true : false
 
-                        var insertResposne1 = await _supabaseClient.From<MessageDto>().Insert(newMessageIfOwn);
-
-                        var messageResposneIf1 = insertResposne1.Models.FirstOrDefault();
-
-                        // Update Conversation Table
-
-                        var updateConvTable1 = await _supabaseClient.From<ConversationDto>()
-                                    .Where(n => n.ConvId == convModel.ConvId)
-                                    .Single();
-                        updateConvTable1.LastMessage = messageResposneIf1.Id;
-                        updateConvTable1.UpdatedTime = messageResposneIf1.TimeStamp;
-
-                        await updateConvTable1.Update<ConversationDto>();
+                };
+                var insertResposne1 = await _supabaseClient.From<MessageDto>().Insert(newMessageIf);
+                var messageResposneIf1 = insertResposne1.Models.FirstOrDefault();
 
 
-                        return Ok(messageResposneIf1);
+                var updateConvTable1 = await _supabaseClient.From<ConversationDto>()
+                                        .Where(n => n.ConvId == convModel.ConvId)
+                                        .Single();
+                            updateConvTable1.LastMessage = messageResposneIf1.Id;
+                            updateConvTable1.UpdatedTime = messageResposneIf1.TimeStamp;
 
+                await updateConvTable1.Update<ConversationDto>();
 
-
-                    }
-
-                    var fonkaParticipants = await _supabaseClient.From<ParticipantDto>()
-                            .Where(p => p.UserId == Sender.Id)
-                            .Get();
-                    //Console.WriteLine("Fonka Participants");
-
-                    var barokParticipants = await _supabaseClient.From<ParticipantDto>()
-                            .Where(p => p.UserId == messageUser.RecpientId)
-                            .Get();
-                    //Console.WriteLine("Barok Participants");
-
-                    Dictionary<long, long> myFirstDictionary = new Dictionary<long, long>();
-                    Dictionary<long, long> mySeconDictionary = new Dictionary<long, long>();
-                    
-                    
-                    myFirstDictionary=fonkaParticipants.Models.ToDictionary(f => f.ParticipantId, f2 => f2.ConversationId);
-                    mySeconDictionary=barokParticipants.Models.ToDictionary(f => f.ParticipantId, f2 => f2.ConversationId);
-                    
-                    long ConvId = myFirstDictionary.Values.FirstOrDefault(values => mySeconDictionary.ContainsValue(values));
-                    
-
-                    if (ConvId == 0)
-                        {
-                            return BadRequest("Internal Server Error, ConvId not found when supposed to be found");
-                        }
-
-                        // I have the coversation Id
-                        // Form the message to be sent to the database
-                        MessageDto newMessageIf = new MessageDto
-                        {
-                            TimeStamp = DateTime.UtcNow,
-                            MessageType = messageUser.MessageType,
-                            Status = "Sent",
-                            SenderId = Sender.Id,
-                            RecpientId = messageUser.RecpientId,
-                            Content = messageUser.Content,
-                            ConvId = ConvId,
-                            IsAudio = messageUser.IsAudio,
-                            IsImage = messageUser.IsImage,
-                            New = true
-
-                        };
-                        // Update the Conversation Table and insert into the message table
-                        
-                            var insertResposne = await _supabaseClient.From<MessageDto>().Insert(newMessageIf);
-                            
-                            var messageResposneIf = insertResposne.Models.FirstOrDefault();
-                    
-                    // Update Conversation Table
-
-                    var updateConvTable = await _supabaseClient.From<ConversationDto>()
-                                .Where(n => n.ConvId == ConvId)
-                                .Single();
-                    updateConvTable.LastMessage = messageResposneIf.Id;
-                    updateConvTable.UpdatedTime = messageResposneIf.TimeStamp;
-                    
-                    await updateConvTable.Update<ConversationDto>();
-
-                    /*
-                    //   START HERE NOTIFICATION
-                    var recieverNoti12 = await _supabaseClient.From<Userdto>()
-                        .Where(n => n.Id == messageUser.RecpientId && n.Deleted == false)
-                        .Get();
-                    var RecvieverNoti11 = recieverNoti12.Models.FirstOrDefault();
-
-                    var notifications123 = RecvieverNoti11.Notification ?? new Dictionary<string, string>();
-                    if (notifications123.ContainsKey(ConvId.ToString()))
-                    {
-                        //notifications[ConvId.ToString()] = "0";
-                        int currentCount = int.Parse(notifications123[ConvId.ToString()]);
-                        notifications123[ConvId.ToString()] = (currentCount + 1).ToString();
-                    }
-                    else
-                    {
-                        //notifications[ConvId.ToString()] = "0";
-                        Console.WriteLine("Notification not found, creating new one with value 1");
-                        // Create a new notification with count 1
-                        notifications123[ConvId.ToString()] = "1";
-                    }
-
-                    // Serialize the updated notifications back to JSON
-                    RecvieverNoti11.Notification = notifications123;
-
-                    // Update the UserProfiledto record in the database
-                    await _supabaseClient.From<Userdto>().Update(RecvieverNoti11);
-                    // END HERE NOTIFICATION
-                    */
-
-                    return Ok(messageResposneIf); 
-                         
-
-                    }
-               
-                
-                //Console.WriteLine("Decision: New Messsage");
+            }
+            
+            // Decision: New Messsage #############
 
                 
                 ConversationDto newConversation = new ConversationDto
@@ -840,8 +718,7 @@ namespace LiveChat.Controllers
 
                 var newConvResponse = newConvTable.Models.FirstOrDefault(); 
 
-                //Console.WriteLine("Conversation Inserted");
-                //Console.WriteLine(newConvResponse.ConvId);
+                
                 // Create new Conversation by meddling with Message,Conversation and Participation Table
 
                 MessageDto newMessage = new MessageDto
@@ -855,21 +732,20 @@ namespace LiveChat.Controllers
                     ConvId = newConvResponse.ConvId,
                     IsImage = messageUser.IsImage,
                     IsAudio = messageUser.IsAudio,
-                    New  = true
+                    New = Sender.Id != messageUser.RecpientId ? true : false
+
                 };
                 // Create a new Message Table with a convId of NULL temporarily
-                //Console.WriteLine("New message Formed");
 
                 var insertMessage = await _supabaseClient.From<MessageDto>().Insert(newMessage);
                 var messageResposne = insertMessage.Models.FirstOrDefault();
 
-                //Console.WriteLine("Message Inserted");
                 // create a new row in the conversation table
 
 
 
                 // update the NULL convId back
-               // Console.WriteLine("Updating Last Message id in Conv table ");
+                // Console.WriteLine("Updating Last Message id in Conv table ");
 
 
                 var responseUpdateMessageId = await _supabaseClient.From<ConversationDto>()
@@ -898,43 +774,17 @@ namespace LiveChat.Controllers
                                             var addNewParticipants2 = await _supabaseClient.From<ParticipantDto>()
                                                 .Insert(newParticipant2);
                 //Console.WriteLine("Created Participants");
-                var responseUpdateMessagefinal = await _supabaseClient.From<MessageDto>()
-                                               .Where(n => n.Id == messageResposne.Id)
-                                               .Get();
-                var finalBound = responseUpdateMessagefinal.Models.FirstOrDefault();
-                long convIdJson = newConvResponse.ConvId;
-                /*
-                //   START HERE NOTIFICATION
-                var recieverNoti = await _supabaseClient.From<Userdto>()
+                Noti = await _supabaseClient.From<Userdto>()
                     .Where(n => n.Id == messageUser.RecpientId && n.Deleted == false)
                     .Get();
-                var RecvieverNoti = recieverNoti.Models.FirstOrDefault();
-
-                var notifications = RecvieverNoti.Notification ?? new Dictionary<string, string>();
-                if (notifications.ContainsKey(convIdJson.ToString()))
-                {
-                    Console.WriteLine("found json when creating conv, and doing Nothing");
-                        notifications[convIdJson.ToString()] = "0";
-                    int currentCount = int.Parse(notifications[convIdJson.ToString()]);
-                    notifications[convIdJson.ToString()] = (currentCount + 1).ToString();
-                }
-                else
-                {
-                    Console.WriteLine("Notification not found, creating new one with value 1");
-                    // Create a new notification with count 1
-                    notifications[convIdJson.ToString()] = "1";
-                }
-
-                // Serialize the updated notifications back to JSON
-                RecvieverNoti.Notification = notifications;
-
-                // Update the UserProfiledto record in the database
-                await _supabaseClient.From<Userdto>().Update(RecvieverNoti);
-                // END HERE NOTIFICATION
-                */
-
+                var RecvieverNoti =var responseUpdateMessagefinal = await _supabaseClient.From<MessageDto>()
+                                                .Where(n => n.Id == messageResposne.Id)
+                                                .Get();
+                var finalBound = responseUpdateMessagefinal.Models.FirstOrDefault();
+                //long convIdJson = newConvResponse.ConvId;
+                
                 return Ok(finalBound);
-                                       
+                                        
                                 
             }
             catch (Exception ex)
