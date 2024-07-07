@@ -695,8 +695,8 @@ namespace LiveChat.Controllers
 
 
                 var updateConvTable1 = await _supabaseClient.From<ConversationDto>()
-                                        .Where(n => n.ConvId == convModel.ConvId)
-                                        .Single();
+                        .Where(n => n.ConvId == messageUser.ConversationId)
+                        .Single();
                             updateConvTable1.LastMessage = messageResposneIf1.Id;
                             updateConvTable1.UpdatedTime = messageResposneIf1.TimeStamp;
 
