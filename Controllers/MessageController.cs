@@ -702,7 +702,7 @@ namespace LiveChat.Controllers
 
                 await updateConvTable1.Update<ConversationDto>();
                 
-                return Ok(messageResposneIf1)
+                return Ok(messageResposneIf1);
             }
             
             // Decision: New Messsage #############
