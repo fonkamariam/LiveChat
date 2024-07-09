@@ -16,5 +16,7 @@
         
         public long ConversationId {get; set;}
 
+        public long Reply { get; set; }
+
     }
 }

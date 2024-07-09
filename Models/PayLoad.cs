@@ -32,6 +32,7 @@ namespace LiveChat.Models
         public DateTime LastSeen { get; set; }
         public string ProfilePic { get; set; }
         public bool Edited { get; set; }
+        public long Reply { get; set; }
 
     }
 

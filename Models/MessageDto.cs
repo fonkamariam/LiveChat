@@ -27,6 +27,8 @@ public class MessageDto : BaseModel
         [Column("IsImage")] public bool IsImage { get; set; }
 
         [Column("New")] public bool New {  get; set; } = true;
+
+        [Column("Reply")] public long Reply { get; set; }    
  
         [ForeignKey("SenderId")] public long SenderId { get; set; }
         

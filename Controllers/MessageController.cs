@@ -688,7 +688,7 @@ namespace LiveChat.Controllers
                     IsAudio = messageUser.IsAudio,
                     IsImage = messageUser.IsImage,
                     New = Sender.Id != messageUser.RecpientId ? true : false
-
+                    Reply = messageUser.Reply
                 };
                 var insertResposne1 = await _supabaseClient.From<MessageDto>().Insert(newMessageIf);
                 var messageResposneIf1 = insertResposne1.Models.FirstOrDefault();
@@ -733,7 +733,8 @@ namespace LiveChat.Controllers
                     ConvId = newConvResponse.ConvId,
                     IsImage = messageUser.IsImage,
                     IsAudio = messageUser.IsAudio,
-                    New = Sender.Id != messageUser.RecpientId ? true : false
+                    New = Sender.Id != messageUser.RecpientId ? true : false,
+                    Reply = messageUser.Reply
                 };
                 // Create a new Message Table with a convId of NULL temporarily
 
