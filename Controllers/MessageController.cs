@@ -687,7 +687,7 @@ namespace LiveChat.Controllers
                     ConvId = messageUser.ConversationId,
                     IsAudio = messageUser.IsAudio,
                     IsImage = messageUser.IsImage,
-                    New = Sender.Id != messageUser.RecpientId ? true : false
+                    New = Sender.Id != messageUser.RecpientId ? true : false,
                     Reply = messageUser.Reply
                 };
                 var insertResposne1 = await _supabaseClient.From<MessageDto>().Insert(newMessageIf);
