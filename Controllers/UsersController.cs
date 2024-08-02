@@ -197,7 +197,7 @@ namespace LiveChat.Controllers
                 var response = await _supabaseClient.From<Userdto>()
                     .Where(n => n.Email == person.Email && n.Deleted == false).Get();
                 var hey = response.Models.FirstOrDefault();
-
+                Console.WriteLine("1");
                     if (hey == null)
                     {
                         return BadRequest("Email Invalid");
@@ -207,9 +207,11 @@ namespace LiveChat.Controllers
                     {
                         return Unauthorized("Wrong Password");
                     }
+                    Console.WriteLine("2");
+                
 
-                    string token = CreateToken(hey.Email,hey.Id);
-                    var refreshToken = GenerateRefreshToken();
+                string token = CreateToken(hey.Email,hey.Id);
+                var refreshToken = GenerateRefreshToken();
                 var responseUpdate = await _supabaseClient.From<Userdto>()
                             .Where(n => n.Email == person.Email)
                             .Single();
@@ -240,6 +242,8 @@ namespace LiveChat.Controllers
                     allProfilePic.Reverse();
                    // Console.WriteLine("REversed HHHH");
                 }
+                Console.WriteLine("3");
+                
                 var result = new
                     {
                         Id = hey.Id,
@@ -254,7 +258,8 @@ namespace LiveChat.Controllers
 
                 };
                 
-
+Console.WriteLine("4");
+                
 
                 return Ok(result);
                

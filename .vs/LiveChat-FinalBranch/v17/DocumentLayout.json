@@ -3,6 +3,14 @@
   "WorkspaceRootPath": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\MessageDto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Models\\MessageDto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\MessageUser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Models\\MessageUser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\MessagesHub.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MessagesHub.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -55,20 +63,12 @@
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Models\\CustomConv.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\MessageDto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Models\\MessageDto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\DeleteConv.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Models\\DeleteConv.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\SearchEmail.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Models\\SearchEmail.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\MessageUser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Models\\MessageUser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\UrlObject.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -82,7 +82,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 7,
+          "SelectedChildIndex": 9,
           "Children": [
             {
               "$type": "Bookmark",
@@ -98,31 +98,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "PayLoad.cs",
-              "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\PayLoad.cs",
-              "RelativeDocumentMoniker": "Models\\PayLoad.cs",
-              "ToolTip": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\PayLoad.cs",
-              "RelativeToolTip": "Models\\PayLoad.cs",
-              "ViewState": "AQIAAAkAAAAAAAAAAAAAABAAAAAIAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-07-01T04:41:44.426Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "UserProfiledto.cs",
-              "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\UserProfiledto.cs",
-              "RelativeDocumentMoniker": "Models\\UserProfiledto.cs",
-              "ToolTip": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\UserProfiledto.cs",
-              "RelativeToolTip": "Models\\UserProfiledto.cs",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAB0AAAAAAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-07-01T04:37:15.739Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 8,
               "Title": "UserStatusDic.cs",
               "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\UserStatusDic.cs",
               "RelativeDocumentMoniker": "Models\\UserStatusDic.cs",
@@ -134,7 +110,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 5,
               "Title": "UserPayLoad.cs",
               "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\UserPayLoad.cs",
               "RelativeDocumentMoniker": "Models\\UserPayLoad.cs",
@@ -146,7 +122,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 2,
               "Title": "MessagesHub.cs",
               "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\MessagesHub.cs",
               "RelativeDocumentMoniker": "MessagesHub.cs",
@@ -159,7 +135,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 7,
               "Title": "UsersController.cs",
               "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Controllers\\UsersController.cs",
               "RelativeDocumentMoniker": "Controllers\\UsersController.cs",
@@ -171,7 +147,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 9,
               "Title": "User.cs",
               "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\User.cs",
               "RelativeDocumentMoniker": "Models\\User.cs",
@@ -184,6 +160,56 @@
             {
               "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "MessageUser.cs",
+              "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\MessageUser.cs",
+              "RelativeDocumentMoniker": "Models\\MessageUser.cs",
+              "ToolTip": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\MessageUser.cs",
+              "RelativeToolTip": "Models\\MessageUser.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAA4AAAApAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-06-13T19:11:51.078Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MessageDto.cs",
+              "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\MessageDto.cs",
+              "RelativeDocumentMoniker": "Models\\MessageDto.cs",
+              "ToolTip": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\MessageDto.cs",
+              "RelativeToolTip": "Models\\MessageDto.cs",
+              "ViewState": "AQIAABYAAAAAMzMzMzMrwBwAAAA+AAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-05-30T05:34:00.65Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "UserProfiledto.cs",
+              "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\UserProfiledto.cs",
+              "RelativeDocumentMoniker": "Models\\UserProfiledto.cs",
+              "ToolTip": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\UserProfiledto.cs",
+              "RelativeToolTip": "Models\\UserProfiledto.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAB0AAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-07-01T04:37:15.739Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "PayLoad.cs",
+              "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\PayLoad.cs",
+              "RelativeDocumentMoniker": "Models\\PayLoad.cs",
+              "ToolTip": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\PayLoad.cs",
+              "RelativeToolTip": "Models\\PayLoad.cs",
+              "ViewState": "AQIAAAkAAAAAAAAAAAAAABAAAAAIAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-07-01T04:41:44.426Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "MessageController.cs",
               "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Controllers\\MessageController.cs",
               "RelativeDocumentMoniker": "Controllers\\MessageController.cs",
@@ -195,7 +221,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 11,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Program.cs",
               "RelativeDocumentMoniker": "Program.cs",
@@ -207,7 +233,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 12,
               "Title": "ConvPayLoad.cs",
               "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\ConvPayLoad.cs",
               "RelativeDocumentMoniker": "Models\\ConvPayLoad.cs",
@@ -219,7 +245,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 10,
               "Title": "UserProfileController.cs",
               "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Controllers\\UserProfileController.cs",
               "RelativeDocumentMoniker": "Controllers\\UserProfileController.cs",
@@ -231,7 +257,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 13,
               "Title": "launchSettings.json",
               "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Properties\\launchSettings.json",
               "RelativeDocumentMoniker": "Properties\\launchSettings.json",
@@ -243,19 +269,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
-              "Title": "MessageDto.cs",
-              "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\MessageDto.cs",
-              "RelativeDocumentMoniker": "Models\\MessageDto.cs",
-              "ToolTip": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\MessageDto.cs",
-              "RelativeToolTip": "Models\\MessageDto.cs",
-              "ViewState": "AQIAAAgAAABAMzMzMzMbwBwAAAA+AAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-05-30T05:34:00.65Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 15,
               "Title": "DeleteConv.cs",
               "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\DeleteConv.cs",
               "RelativeDocumentMoniker": "Models\\DeleteConv.cs",
@@ -267,7 +281,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 14,
               "Title": "CustomConv.cs",
               "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\CustomConv.cs",
               "RelativeDocumentMoniker": "Models\\CustomConv.cs",
@@ -279,7 +293,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 16,
               "Title": "SearchEmail.cs",
               "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\SearchEmail.cs",
               "RelativeDocumentMoniker": "Models\\SearchEmail.cs",
@@ -288,18 +302,6 @@
               "ViewState": "AQIAAAAAAAAAAAAAAAAAABAAAAAuAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-06-14T12:57:42.488Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 16,
-              "Title": "MessageUser.cs",
-              "DocumentMoniker": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\MessageUser.cs",
-              "RelativeDocumentMoniker": "Models\\MessageUser.cs",
-              "ToolTip": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\Models\\MessageUser.cs",
-              "RelativeToolTip": "Models\\MessageUser.cs",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAA4AAAApAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-06-13T19:11:51.078Z"
             },
             {
               "$type": "Document",

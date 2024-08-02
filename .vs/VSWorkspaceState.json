@@ -4,6 +4,6 @@
     "\\Controllers",
     "\\Models"
   ],
-  "SelectedNode": "\\MessagesHub.cs",
+  "SelectedNode": "\\Models\\MessageDto.cs",
   "PreviewInSolutionExplorer": false
 }
