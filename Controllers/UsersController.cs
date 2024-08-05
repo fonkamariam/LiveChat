@@ -195,7 +195,9 @@ namespace LiveChat.Controllers
             try
             {
                 var response = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Email == person.Email && n.Deleted == false).Get();
+                    .Where(n => n.Email == person.Email && n.Deleted == false)
+                    .Get();
+
                 var hey = response.Models.FirstOrDefault();
                 Console.WriteLine("1");
                     if (hey == null)
@@ -235,8 +237,6 @@ namespace LiveChat.Controllers
                     ? JsonConvert.DeserializeObject<List<string>>(hereProfile.ProfilePic)
                     : null;
 
-                //allProfilePic.Reverse();
-                //List<string> reversedProfilePic = allProfilePic.AsEnumerable().Reverse().ToList();
                 if (allProfilePic != null)
                 {
                     allProfilePic.Reverse();
@@ -258,7 +258,7 @@ namespace LiveChat.Controllers
 
                 };
                 
-Console.WriteLine("4");
+                 Console.WriteLine("4");
                 
 
                 return Ok(result);
