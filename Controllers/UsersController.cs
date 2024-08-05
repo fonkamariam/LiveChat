@@ -194,8 +194,7 @@ namespace LiveChat.Controllers
         {
             try
             {
-                Console.WriteLine("1");
-             
+                
                 var response = await _supabaseClient.From<Userdto>()
                     .Where(n => n.Email == person.Email && n.Deleted == false)
                     .Get();
@@ -210,7 +209,6 @@ namespace LiveChat.Controllers
                     {
                         return Unauthorized("Wrong Password");
                     }
-                    Console.WriteLine("2");
                 
 
                 string token = CreateToken(hey.Email,hey.Id);
@@ -241,9 +239,7 @@ namespace LiveChat.Controllers
                 if (allProfilePic != null)
                 {
                     allProfilePic.Reverse();
-                   // Console.WriteLine("REversed HHHH");
                 }
-                Console.WriteLine("3");
                 
                 var result = new
                     {
@@ -259,9 +255,6 @@ namespace LiveChat.Controllers
 
                 };
                 
-                 Console.WriteLine("4");
-                
-
                 return Ok(result);
                
             }

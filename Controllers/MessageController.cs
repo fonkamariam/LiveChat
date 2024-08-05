@@ -855,15 +855,14 @@ namespace LiveChat.Controllers
                 // Two Decisions here, Is it the last message in the conversation (Yes:delete Conv,participant,message)
                 // (No:update the last message from conversation table and delete the message from the message table)
                 var getMessageInfo = await _supabaseClient.From<MessageDto>()
-                        .Where(n => n.Id == deleteMessage && n.Deleted == false)
-                        .Get();
-                Console.WriteLine("Got the message");
-                    var getRecpientId = getMessageInfo.Models.FirstOrDefault();
-                    
-                    if (getRecpientId == null)
-                    {
-                        return BadRequest("Problem with the parameter Id");
-                    }
+                    .Where(n => n.Id == deleteMessage && n.Deleted == false)
+                    .Get();
+                var getRecpientId = getMessageInfo.Models.FirstOrDefault();
+                
+                if (getRecpientId == null)
+                {
+                    return BadRequest("Problem with the parameter Id");
+                }
                 long realRecpId = getRecpientId.RecpientId;
                 if (getRecpientId.RecpientId == Sender.Id)
                 {
@@ -892,16 +891,16 @@ namespace LiveChat.Controllers
                 }
                 
                     // execute first decision 
-                    if (checkCount == 1)
-                    {
+                if (checkCount == 1)
+                {
+                
+                    await _supabaseClient.From<ParticipantDto>()
+                        .Where(n => n.ConversationId == getRecpientId.ConvId)
+                        .Delete();
                     
-                            await _supabaseClient.From<ParticipantDto>()
-                                .Where(n => n.ConversationId == getRecpientId.ConvId)
-                                .Delete();
-                            
                     await _supabaseClient.From<ConversationDto>()
-                                .Where(n => n.ConvId == getRecpientId.ConvId)
-                                .Delete();
+                        .Where(n => n.ConvId == getRecpientId.ConvId)
+                        .Delete();
                     
                     var up = await _supabaseClient.From<MessageDto>()
                                 .Where(n => n.Id == deleteMessage)
@@ -915,21 +914,21 @@ namespace LiveChat.Controllers
                     return Ok("Deleted");
                         
 
-                    }
+                }
 
                 // Second Decision tree
                 Console.WriteLine("Second Decsion Tree");
-                        var getConvid = await _supabaseClient.From<ConversationDto>()
-                            .Where(n => n.ConvId == getRecpientId.ConvId)
-                            .Get();
-                        // Is it the Last message or not?
-                        //Yes it is
-                        var getconvId = getConvid.Models.FirstOrDefault();
+                var getConvid = await _supabaseClient.From<ConversationDto>()
+                    .Where(n => n.ConvId == getRecpientId.ConvId)
+                    .Get();
+                // Is it the Last message or not?
+                //Yes it is
+                var getconvId = getConvid.Models.FirstOrDefault();
                 Console.WriteLine("Got Conversation Id");
 
 
                 if (deleteMessage == getconvId.LastMessage)
-                        {
+                {
                     Console.WriteLine("Correct Message Id");
 
                     // First part: where Sender is Sender.Id and Recipient is getRecpientId.RecpientId
@@ -1136,15 +1135,16 @@ namespace LiveChat.Controllers
         [HttpGet("GetAllConversationDirect"), Authorize] 
         public async Task<IActionResult> GetAllConversationDirect()
         {
-            
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
             if (emailClaim == null)
             {
                 return StatusCode(15, "Invalid Token");
             }
+            
             var email = emailClaim.Value.Split(':')[0].Trim();
             try
             {
+            
                 var response = await _supabaseClient.From<Userdto>()
                     .Where(n => n.Email == email && n.Deleted == false)
                     .Get();
@@ -1154,23 +1154,24 @@ namespace LiveChat.Controllers
                 {
                     return Unauthorized("Invalid Token");
                 }
+            
                 var responseUpdate = await _supabaseClient.From<Userdto>()
                             .Where(n => n.Id == hey.Id)
                             .Single();
                 responseUpdate.MessagePayload = null;
                 responseUpdate.ConvPayload = null;
                 responseUpdate.UserPayload = null;
-                
+            
                 await responseUpdate.Update<Userdto>();
-
+            
                 var allConvIdResponse = await _supabaseClient.From<ParticipantDto>()
                      .Where(n => n.UserId == hey.Id)
                      .Get();
-
+            
                var allConvIdArray = allConvIdResponse.Models.Select(n => n.ConversationId).ToHashSet();
                 List<ConversationDto> allConvIdOrdered = new List<ConversationDto>();
                 List<CustomConv> allyouNeed = new List<CustomConv>();
-                
+            
                 // Get all Conversation info ordered by UpdatedTime
                     foreach (var convId in allConvIdArray)
                     {
@@ -1181,10 +1182,13 @@ namespace LiveChat.Controllers
                         var messageIdConv = convResponse.Models.FirstOrDefault();
                         long messageId = messageIdConv.LastMessage;
                         
+                    
                     var messResponse = await _supabaseClient.From<MessageDto>()
                         .Where(n => n.Id == messageId && n.Deleted == false)
                         .Get();
                     var getContent = messResponse.Models.FirstOrDefault();
+                    
+                    
                     string content = getContent.Content;
                     bool isaudio = getContent.IsAudio;
                     bool isimage = getContent.IsImage;
@@ -1196,11 +1200,10 @@ namespace LiveChat.Controllers
                        .Where(n=>n.RecpientId==hey.Id && n.New == true)
                        .Get();
                     var getContentNoti = messResponseNoti.Models.Count;
-                    //Console.WriteLine($"Notification for {content} {getContentNoti}");
-
+                   
                     var userResponse = await _supabaseClient.From<ParticipantDto>()
-                            .Where(n => n.ConversationId == convId)
-                            .Get();
+                        .Where(n => n.ConversationId == convId)
+                        .Get();
                     var userRes = userResponse.Models.ToList();
                     var first = userRes[0];
                     var second = userRes[1];
