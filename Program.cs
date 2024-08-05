@@ -36,7 +36,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<UserConnectionManager>();
 builder.Services.AddSingleton<MessagesHub>();
 //services.AddScoped<MessageController>();
-builder.Services.AddScoped<Supabase.Client>(provider =>
+builder.Services.AddSingleton<Supabase.Client>(provider =>
 {
     var supabaseUrl = secretsConfig["Supabase:SupabaseUrl"];
     var supabaseKey = secretsConfig["Supabase:SupabaseKey"];
@@ -51,9 +51,9 @@ builder.Services.AddScoped<Supabase.Client>(provider =>
 });
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowReactApp",
+    options.AddPolicy("AllowSpecificOrigins",
         builder => builder
-            .WithOrigins("https://fonkagram.netlify.app/")
+            .WithOrigins("https://fonkagram.netlify.app , http://localhost:5206, http://localhost:3000")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .SetIsOriginAllowed((host)=>true)
@@ -131,7 +131,7 @@ else
 
 
 
-app.UseCors("AllowReactApp"); // Make sure this is before UseRouting
+app.UseCors("AllowSpecificOrigins"); // Make sure this is before UseRouting
 
 app.Use(async (context, next) =>
 {
