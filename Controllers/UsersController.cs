@@ -194,12 +194,13 @@ namespace LiveChat.Controllers
         {
             try
             {
+                Console.WriteLine("1");
+             
                 var response = await _supabaseClient.From<Userdto>()
                     .Where(n => n.Email == person.Email && n.Deleted == false)
                     .Get();
 
                 var hey = response.Models.FirstOrDefault();
-                Console.WriteLine("1");
                     if (hey == null)
                     {
                         return BadRequest("Email Invalid");
@@ -266,7 +267,7 @@ namespace LiveChat.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500,"No Connection, Please Try again");
+                return StatusCode(500,ex);
             }
         }
         // Post 

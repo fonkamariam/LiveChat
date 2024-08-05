@@ -40,6 +40,8 @@ builder.Services.AddSingleton<Supabase.Client>(provider =>
 {
     var supabaseUrl = secretsConfig["Supabase:SupabaseUrl"];
     var supabaseKey = secretsConfig["Supabase:SupabaseKey"];
+    Console.WriteLine($"Supabase URL: {supabaseUrl}");
+    Console.WriteLine($"Supabase Key: {supabaseKey}");
     return new Supabase.Client(
         supabaseUrl,
         supabaseKey,
