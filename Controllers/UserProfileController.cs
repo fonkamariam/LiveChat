@@ -364,7 +364,7 @@ namespace LiveChat.Controllers
             {
                 return StatusCode(15, "Invalid Token");
             }
-            var email = emailClaim.Value.Split(':')[0].Trim();
+            var email = emailClaim.Value.Split(':')[0].Trim();  
             try
             {
                 var response = await _supabaseClient.From<Userdto>()

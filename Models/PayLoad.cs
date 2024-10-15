@@ -15,7 +15,7 @@ namespace LiveChat.Models
         public long Id { get; set; }
         public long ConvId { get; set; }
         public string Status { get; set; }
-        public bool New { get; set; }
+        public bool New { get; set; } //##########
         public string Content { get; set; }
         public bool Deleted { get; set; }
         public string ChatType { get; set; } 
@@ -31,7 +31,7 @@ namespace LiveChat.Models
         public string OnlineStatus { get; set; }
         public DateTime LastSeen { get; set; }
         public string ProfilePic { get; set; }
-        public bool Edited { get; set; }
+        public bool Edited { get; set; } //########
         public long Reply { get; set; }
 
     }

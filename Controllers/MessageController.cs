@@ -134,7 +134,6 @@ namespace LiveChat.Controllers
             if (payloadObject == null)
             {
                 Console.WriteLine("the paramerter returned is Null");
-
                 return BadRequest("Payload is null");
             }
             // Cast the payload to a JObject
@@ -248,9 +247,9 @@ namespace LiveChat.Controllers
                     {
                         // Send message to active recipient
                         await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
-                    }
-                    else
-                    {
+                    } 
+                    else 
+                    { 
                         var getArrayModel = await _supabaseClient.From<Userdto>()
                          .Where(n => n.Id == recp && n.Deleted == false)
                          .Single();
@@ -587,8 +586,8 @@ namespace LiveChat.Controllers
                     return StatusCode(11, "Message not found");
                 }
                 SenderMessage.New = false;
-                    await _supabaseClient.From<MessageDto>().Update(SenderMessage);
-                    Console.WriteLine("ZeroNotification DONE MESSAGE");
+                await _supabaseClient.From<MessageDto>().Update(SenderMessage);
+                Console.WriteLine("ZeroNotification DONE MESSAGE");
 
                     return Ok();
                       
@@ -708,12 +707,12 @@ namespace LiveChat.Controllers
             // Decision: New Messsage #############
 
                 
-                ConversationDto newConversation = new ConversationDto
-                {
-                    CreationTime = DateTime.UtcNow,
-                    UpdatedTime = DateTime.UtcNow,
-                    LastMessage = 346
-                };
+            ConversationDto newConversation = new ConversationDto
+            {
+                CreationTime = DateTime.UtcNow,
+                UpdatedTime = DateTime.UtcNow,
+                LastMessage = 346
+            };
 
                 var newConvTable = await _supabaseClient.From<ConversationDto>().Insert(newConversation);
 
@@ -984,45 +983,46 @@ namespace LiveChat.Controllers
 
         [HttpGet("GetMessageHistory"), Authorize] 
         public async Task<IActionResult> GetMessageHistory(string query)
+        {
+            
+            try
             {
-                
-                try
+                var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+                if (emailClaim == null)
                 {
-                    var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
-                    if (emailClaim == null)
-                    {
-                        return BadRequest("Invalid Token");
-                    }
-
-
-                    var getSender = await _supabaseClient.From<Userdto>()
-                        .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false)
-                        .Get();
-                    var sender = getSender.Models.FirstOrDefault();
-
-                    if (sender == null)
-                    {
-                        return BadRequest("Invalid Token");
-                    }
-
-                    var getEverything = await _supabaseClient.From<MessageDto>()
-                        .Where(n => (n.SenderId == sender.Id) || (n.RecpientId == sender.Id) && n.Deleted==false)
-                        .Where(n => n.Content.Contains(query))
-                        .Order(n => n.TimeStamp, Constants.Ordering.Descending)
-                        .Get();
-
-                    Array heygetEverything = getEverything.Models.ToArray();
-                    return Ok(heygetEverything);
-
-
+                    return BadRequest("Invalid Token");
                 }
-                catch (Exception)
+
+
+                var getSender = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == emailClaim.ToString() && n.Deleted == false)
+                    .Get();
+                var sender = getSender.Models.FirstOrDefault();
+
+                if (sender == null)
                 {
-                    return BadRequest("Connection Problem");
+                    return BadRequest("Invalid Token");
                 }
+
+                var getEverything = await _supabaseClient.From<MessageDto>()
+                    .Where(n => (n.SenderId == sender.Id) || (n.RecpientId == sender.Id) && n.Deleted==false)
+                    .Where(n => n.Content.Contains(query))
+                    .Order(n => n.TimeStamp, Constants.Ordering.Descending)
+                    .Get();
+
+                Array heygetEverything = getEverything.Models.ToArray();
+                return Ok(heygetEverything);
+
+
             }
+            catch (Exception)
+            {
+                return BadRequest("Connection Problem");
+            }
+        }
        
-        [HttpGet("GetConversationMessage"), Authorize] 
+        
+        [HttpGet("GetConversationMessage"), Authorize]
         public async Task<IActionResult> GetConversationMessage([FromQuery] long query)
         {
             var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
@@ -1071,11 +1071,7 @@ namespace LiveChat.Controllers
                             .Order(n => n.TimeStamp, Constants.Ordering.Ascending)
                             .Get();
                     var allmessArray100 = convMessage100.Models.ToList();
-                    // var updatedMessages12 = allmessArray.Select(message => { message.New = false; return message; }).ToList();
-
-                    // Batch update all messages
-                    //await _supabaseClient.From<MessageDto>().Upsert(updatedMessages12);
-
+                    
                     return Ok(allmessArray100);
                 }
                 return Ok("Array empty");

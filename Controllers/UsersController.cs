@@ -283,11 +283,12 @@ namespace LiveChat.Controllers
                 int code = random.Next(10000, 100000);
 
                 // send email 
-                bool x = SendEmail(emailPara, code);
+                /*bool x = SendEmail(emailPara, code);
                 if (x == false)
                 {
+                        
                     return Unauthorized("Couldn't Send email,Try again");
-                }
+                }*/
                 RegisterVertifyDto registerVertify = new RegisterVertifyDto
                         {
                             Email = emailPara,
@@ -394,7 +395,6 @@ namespace LiveChat.Controllers
             }
         }
 
-                
         [HttpPost("ForgotPassword")]
         public async Task<IActionResult> ForgotPassword([FromBody]string email)
         {
@@ -437,7 +437,6 @@ namespace LiveChat.Controllers
                 return StatusCode(500,"No Connection, Please Try again");
             }
         }
-
         
         [HttpPost("UpdatePasswordThroughCode")]
         public async Task<IActionResult> UpdatePasswordThroughCode( [FromBody] NewPassword newPassword)
