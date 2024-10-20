@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\LiveChat.csproj": {}
+    "C:\\Users\\Eskender\\Desktop\\FonkaGram\\Backend\\Backend\\LiveChat-FinalBranch\\LiveChat.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\LiveChat.csproj": {
+    "C:\\Users\\Eskender\\Desktop\\FonkaGram\\Backend\\Backend\\LiveChat-FinalBranch\\LiveChat.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\LiveChat.csproj",
+        "projectUniqueName": "C:\\Users\\Eskender\\Desktop\\FonkaGram\\Backend\\Backend\\LiveChat-FinalBranch\\LiveChat.csproj",
         "projectName": "LiveChat",
-        "projectPath": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\LiveChat.csproj",
+        "projectPath": "C:\\Users\\Eskender\\Desktop\\FonkaGram\\Backend\\Backend\\LiveChat-FinalBranch\\LiveChat.csproj",
         "packagesPath": "C:\\Users\\Eskender\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\obj\\",
+        "outputPath": "C:\\Users\\Eskender\\Desktop\\FonkaGram\\Backend\\Backend\\LiveChat-FinalBranch\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Eskender\\AppData\\Roaming\\NuGet\\NuGet.Config",

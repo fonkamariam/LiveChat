@@ -39,73 +39,24 @@ public class MessagesHub : Hub
         }
         var userId = userIdclaim.Value.Split(':')[0].Trim();
         long userIdLong = long.Parse(userId);
-
+        DateTime dateTime = DateTime.UtcNow;
+        
         Console.WriteLine($" Logged IN Connected: {userIdLong}");
 
-
+        await Groups.AddToGroupAsync(Context.ConnectionId, userId);
+        
+        await Clients.All.SendAsync("UserStatusChanged", userIdLong, true, dateTime);
         var logoutHandle = await _supabaseClient.From<Userdto>()
          .Where(n => n.Id == userIdLong)
          .Single();
         logoutHandle.Status = "true";
-        DateTime dateTime = DateTime.UtcNow;
         logoutHandle.LastSeen = dateTime;
 
         await logoutHandle.Update<Userdto>();
 
 
-        await Groups.AddToGroupAsync(Context.ConnectionId, userId);
-
-        // Update connection manager
-        _userConnectionManager.AddOrUpdateUser(userId, new UserConnectionInfo
-        {
-            ConnectionId = Context.ConnectionId,
-            IsActive = true
-        });
-        foreach (var user in _userConnectionManager.GetAllUsers())
-        {
-            if (user.Key != userIdLong.ToString())
-            {
-                if (user.Value.IsActive)
-                {
-                    await Clients.All.SendAsync("UserStatusChanged", userIdLong, true,dateTime);
-                }
-                else
-                {
-                    
-                    long onConnectedLong = long.Parse(user.Key);
-                    var getArrayModel = await _supabaseClient.From<Userdto>()
-                        .Where(n => n.Id == onConnectedLong && n.Deleted == false)
-                        .Single();
-                    
-                    // Handle OnlinePayload
-                    Dictionary<string, UserStatusDic> onlinePayload;
-                    if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
-                    {
-                        
-                        onlinePayload = new Dictionary<string, UserStatusDic>();
-                    }
-                    else
-                    {
-                        
-                        onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
-                    }
-
-                    // Add or update the user's online status and last seen time
-                    onlinePayload[userIdLong.ToString()] = new UserStatusDic
-                    {
-                        IsActive = true,
-                        LastSeen = dateTime
-                    };
-
-                    // Serialize and store it back in the database
-                    getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
-
-                    await getArrayModel.Update<Userdto>();
-                    
-                }
-            }
-                
-        }
+        
+       
         await base.OnConnectedAsync();
     }
 
@@ -129,72 +80,13 @@ public class MessagesHub : Hub
         logoutHandle.Status = "false";
         DateTime dateTime = DateTime.UtcNow;
         logoutHandle.LastSeen = dateTime;
-        logoutHandle.OnlinePayload = null;
-        logoutHandle.ConvPayload = null;
-        logoutHandle.UserPayload = null;
-        logoutHandle.OnlinePayload = null;
+        
 
         await logoutHandle.Update<Userdto>();
-        Console.WriteLine("Updated Disconnection");
+        
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
 
-        //await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
-
-        // Update connection manager without removing the user
-        if (_userConnectionManager.TryGetValue(userId, out var userInfo))
-        {
-            userInfo.IsActive = false;
-            _userConnectionManager.AddOrUpdateUser(userId, userInfo);
-            foreach (var user in _userConnectionManager.GetAllUsers())
-            {
-
-                if (user.Key != userIdLong.ToString())
-                {
-                    if (user.Value.IsActive)
-                    {
-                        Console.WriteLine("OnDisconnected: Active");
-                        await Clients.All.SendAsync("UserStatusChanged", userIdLong, false,dateTime);
-
-                    }
-                    else
-                    {
-                        long userKeyLong = long.Parse(user.Key);
-
-                        var getArrayModel = await _supabaseClient.From<Userdto>()
-                            .Where(n => n.Id == userKeyLong && n.Deleted == false)
-                            .Single();
-
-                        // Handle OnlinePayload
-                        Dictionary<string, UserStatusDic> onlinePayload;
-                        if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
-                        {
-                        
-                            onlinePayload = new Dictionary<string, UserStatusDic>();
-                        }
-                        else
-                        {
-                           
-                            onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
-                        }
-
-                        // Add or update the user's online status and last seen time
-                        onlinePayload[userIdLong.ToString()] = new UserStatusDic
-                        {
-                            IsActive = false,
-                            LastSeen = dateTime
-                        };
-
-                        // Serialize and store it back in the database
-                        getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
-                        await getArrayModel.Update<Userdto>();
-                       
-                        
-                    }
-                }
-
-                    
-            }
-            
-        }
+        await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
 
         await base.OnDisconnectedAsync(exception);
     }
@@ -211,225 +103,41 @@ public class MessagesHub : Hub
 		return;
 	}
 
-    public async Task VisibilityChanged(string state)
+    public async Task VisibilityChanged(string state,long userIdLong)
     {
-        var userIdclaim = Context.User.Claims.FirstOrDefault(c => c.Type == "UserId");
-        if (userIdclaim == null) return;
-
-        var userId = userIdclaim.Value.Split(':')[0].Trim();
-        long userIdLong = long.Parse(userId);
+        DateTime dateTime = DateTime.UtcNow;
+        
         
         if (state == "hidden")
         {
-            Console.WriteLine(state);
-
+           
             // Handle visibility change to hidden
-            if (_userConnectionManager.TryGetValue(userId, out var userInfo))
-            {
-                userInfo.IsActive = false;
-                _userConnectionManager.AddOrUpdateUser(userId, userInfo);
-                var logoutHandle = await _supabaseClient.From<Userdto>()
-                 .Where(n => n.Id == userIdLong)
-                 .Single();
-                logoutHandle.Status = "false";
-                DateTime dateTime = DateTime.UtcNow;
-                logoutHandle.LastSeen = dateTime;
-
-                await logoutHandle.Update<Userdto>();
-                foreach (var user in _userConnectionManager.GetAllUsers())
-                {
-                    if (user.Key != userIdLong.ToString())
-                    {
-                        if (user.Value.IsActive)
-                        {
-                            await Clients.All.SendAsync("UserStatusChanged", userIdLong, false, dateTime);
-
-                        }
-                        else
-                        {
-                            long vUserKey = long.Parse(user.Key);
-                            
-
-                            var getArrayModel = await _supabaseClient.From<Userdto>()
-                                .Where(n => n.Id == vUserKey && n.Deleted == false)
-                                .Single();
-
-                            // Handle OnlinePayload
-                            Dictionary<string, UserStatusDic> onlinePayload;
-                            if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
-                            {
-                                
-                                onlinePayload = new Dictionary<string, UserStatusDic>();
-                            }
-                            else
-                            {
-                                
-                                onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
-                            }
-
-                            // Add or update the user's online status and last seen time
-                            onlinePayload[userIdLong.ToString()] = new UserStatusDic
-                            {
-                                IsActive = false,
-                                LastSeen = dateTime
-                            };
-
-                            // Serialize and store it back in the database
-                            getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
-                            await getArrayModel.Update<Userdto>();
-                            
-                        }
-                    }
-                        
-                }
-                //await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
-            }
+            await Clients.All.SendAsync("UserStatusChanged", userIdLong,false,dateTime);
+            
         }
         else
         {
-            Console.WriteLine(state);
             // Handle visibility change to visible
-            if (_userConnectionManager.TryGetValue(userId, out var userInfo))
-            {
-                Console.WriteLine("VisbilityChange Visible,1 ");
-
-                userInfo.IsActive = true;
-                _userConnectionManager.AddOrUpdateUser(userId, userInfo);
-                Console.WriteLine($"User {userIdLong} visibility changed to visible");
-                var logoutHandle = await _supabaseClient.From<Userdto>()
-                 .Where(n => n.Id == userIdLong&& n.Deleted ==false)
-                 .Single();
-                logoutHandle.Status = "true";
-                DateTime dateTime = DateTime.UtcNow;
-                logoutHandle.LastSeen = dateTime;
-
-
-                await logoutHandle.Update<Userdto>();
-                
-                foreach (var user in _userConnectionManager.GetAllUsers())
-                {
-                    if (user.Key != userIdLong.ToString())
-                    {
-                        if (user.Value.IsActive)
-                        {
-                            await Clients.All.SendAsync("UserStatusChanged", userIdLong, true, dateTime);
-
-                        }
-                        else
-                        {
-                            long visibleLong = long.Parse(user.Key);
-                            var getArrayModel = await _supabaseClient.From<Userdto>()
-                                .Where(n => n.Id == visibleLong && n.Deleted == false)
-                                .Single();
-                            
-                            // Handle OnlinePayload
-                            Dictionary<string, UserStatusDic> onlinePayload;
-                            if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
-                            {
-                                
-                                onlinePayload = new Dictionary<string, UserStatusDic>();
-                            }
-                            else
-                            {
-                                
-                                onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
-                            }
-
-                            // Add or update the user's online status and last seen time
-                            onlinePayload[userIdLong.ToString()] = new UserStatusDic
-                            {
-                                IsActive = true,
-                                LastSeen = dateTime
-                            };
-
-                            // Serialize and store it back in the database
-                            getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
-                            await getArrayModel.Update<Userdto>();
-                            
-                        }
-                    }
-
-                        
-                }
-                //await Clients.All.SendAsync("UserStatusChanged", userIdLong, true);
-            }
+            await Clients.All.SendAsync("UserStatusChanged", userIdLong,true,dateTime);
+           
         }
     }
 
-    public async Task UserLoggingOut()
+    public async Task UserLoggingOutTask(long userIdLong)
     {
-        var userIdclaim = Context.User.Claims.FirstOrDefault(c => c.Type == "UserId");
-        if (userIdclaim == null) return;
-
-        var userId = userIdclaim.Value.Split(':')[0].Trim();
-        long userIdLong = long.Parse(userId);
-
-        Console.WriteLine($"User {userIdLong} logged out intentionally");
-
         var logoutHandle = await _supabaseClient.From<Userdto>()
             .Where(n => n.Id == userIdLong)
             .Single();
         logoutHandle.Status = "false";
         DateTime dateTime = DateTime.UtcNow;
         logoutHandle.LastSeen = dateTime;
-        logoutHandle.OnlinePayload = null;
+        
 
         await logoutHandle.Update<Userdto>();
 
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, userIdLong.ToString());
 
-        _userConnectionManager.RemoveUser(userId);
-
-        foreach (var user in _userConnectionManager.GetAllUsers())
-        {
-            if (user.Key != userIdLong.ToString())
-            {
-                if (user.Value.IsActive)
-                {
-                    Console.WriteLine("UserLogged out");
-
-                    await Clients.All.SendAsync("UserStatusChanged", userIdLong, false,dateTime);
-
-                }
-                else
-                {
-                    Console.WriteLine("UserLoggintOut");
-                    long logoutLong = long.Parse(user.Key);
-                    var getArrayModel = await _supabaseClient.From<Userdto>()
-                        .Where(n => n.Id == logoutLong && n.Deleted == false)
-                        .Single();
-                    
-                    // Handle OnlinePayload
-                    Dictionary<string, UserStatusDic> onlinePayload;
-                    if (string.IsNullOrEmpty(getArrayModel.OnlinePayload))
-                    {
-                       
-                        onlinePayload = new Dictionary<string, UserStatusDic>();
-                    }
-                    else
-                    {
-                        
-                        onlinePayload = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(getArrayModel.OnlinePayload);
-                    }
-
-                    // Add or update the user's online status and last seen time
-                    onlinePayload[userIdLong.ToString()] = new UserStatusDic
-                    {
-                        IsActive = false,
-                        LastSeen = dateTime
-                    };
-
-                    // Serialize and store it back in the database
-                    getArrayModel.OnlinePayload = JsonConvert.SerializeObject(onlinePayload);
-                    await getArrayModel.Update<Userdto>();
-                    
-                    
-                }
-            }
-                
-        }
-
-        //await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
+        await Clients.All.SendAsync("UserStatusChanged", userIdLong, false);
     }
 
     public async Task TypingIndicator(long idPara,bool valuePara)
@@ -455,10 +163,20 @@ public class MessagesHub : Hub
     {
         await Clients.Group(recipient.ToString()).SendAsync("ReceiveEditMessage", messageObject);
     }
-    
+
     public async Task HandleDeleteMessageTask(long recipient, long messageId,long convId)
     {
         await Clients.Group(recipient.ToString()).SendAsync("ReceiveDeleteMessage", messageId,convId);
     }
-
+    
+    public async Task HanldeSeenUnseenTask (long recpient,long messageId,long convId) 
+    {
+        await Clients.Group(recpient.ToString()).SendAsync("ReceiveSeenUnseen", messageId,convId);
+    }
+    
+    public async Task HanldeUserProfileTask (long userId, UserProfileFrontend userProfile) 
+    {
+        await Clients.All.SendAsync("UserProfileChanged", userProfile);
+    }
+    
 }

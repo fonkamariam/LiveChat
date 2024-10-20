@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "qb9bJIYYlrMRpXvHEaCX4Wx2uKi/C5Nli2JmPD5go3ZKhmAV9295L+qAZ0K1hgGAui7qSo3+ma8Q+otFNhZZWw==",
+  "dgSpecHash": "fXgGr3obMuClyvqHDRwoYZusQ32BUpHrxXdHQGQBHBCoUxePVqeeMgPI64D8Xt+oJBC34Bc1Ie0D6TSa+FcRhg==",
   "success": true,
-  "projectFilePath": "C:\\Users\\Eskender\\Videos\\Precious\\LiveChat-FinalBranch\\LiveChat.csproj",
+  "projectFilePath": "C:\\Users\\Eskender\\Desktop\\FonkaGram\\Backend\\Backend\\LiveChat-FinalBranch\\LiveChat.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Eskender\\.nuget\\packages\\entityframework\\6.4.4\\entityframework.6.4.4.nupkg.sha512",
     "C:\\Users\\Eskender\\.nuget\\packages\\functions-csharp\\1.3.2\\functions-csharp.1.3.2.nupkg.sha512",
