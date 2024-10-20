@@ -444,4 +444,21 @@ public class MessagesHub : Hub
 
     }
 
+    // Project "Make Fast"
+    
+    public async Task HandleSendMessageTask(long recipient, MessageDto messageObject)
+    {
+        await Clients.Group(recipient.ToString()).SendAsync("ReceiveSendMessage", messageObject);
+    }
+
+    public async Task HandleEditMessageTask(long recipient, MessageDto messageObject)
+    {
+        await Clients.Group(recipient.ToString()).SendAsync("ReceiveEditMessage", messageObject);
+    }
+    
+    public async Task HandleDeleteMessageTask(long recipient, long messageId,long convId)
+    {
+        await Clients.Group(recipient.ToString()).SendAsync("ReceiveDeleteMessage", messageId,convId);
+    }
+
 }

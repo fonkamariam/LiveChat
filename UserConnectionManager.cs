@@ -33,4 +33,3 @@ using System.Collections.Concurrent;
         public bool IsActive { get; set; }
         public DateTime LastHeartbeat { get; set; }
 }
-
