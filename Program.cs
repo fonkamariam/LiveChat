@@ -33,7 +33,6 @@ var secretsConfig = new ConfigurationBuilder()
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddSingleton<UserConnectionManager>();
 builder.Services.AddSingleton<MessagesHub>();
 //services.AddScoped<MessageController>();
 builder.Services.AddSingleton<Supabase.Client>(provider =>

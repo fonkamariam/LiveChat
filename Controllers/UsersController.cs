@@ -209,6 +209,10 @@ namespace LiveChat.Controllers
                     {
                         return Unauthorized("Wrong Password");
                     }
+                if (hey.Active == true)
+                {
+                    return Conflict("Session already in use");
+                }
                 
 
                 string token = CreateToken(hey.Email,hey.Id);
@@ -218,11 +222,10 @@ namespace LiveChat.Controllers
                             .Single();
                 responseUpdate.Refresh_Token = refreshToken.Token;
                 responseUpdate.Token_Created = refreshToken.Created;
-                responseUpdate.MessagePayload = null;
-                responseUpdate.ConvPayload = null;
-                responseUpdate.UserPayload = null;
+                responseUpdate.MissedPayload = null;
                 responseUpdate.Token_Expiry = refreshToken.Expires;
                 responseUpdate.Status = "true";
+                responseUpdate.Active= true; // Used for not logging in again from another device
                 responseUpdate.LastSeen = DateTime.UtcNow;
                 responseUpdate.OnlinePayload = null;
                 await responseUpdate.Update<Userdto>();
@@ -358,6 +361,7 @@ namespace LiveChat.Controllers
                     Token_Expiry = refreshToken.Expires,
                     Token_Created = refreshToken.Created,
                     Status = "true",
+                    Active= true,
                     LastSeen = DateTime.UtcNow
                 };
                 

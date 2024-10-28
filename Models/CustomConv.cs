@@ -32,7 +32,7 @@ namespace LiveChat.Models
         public bool IsImage { get; set; }
 
         public List<string> ProfilePicConv { get; set;}
-
+        //Is this user's Account Deleted or Not
         public bool Deleted { get; set; }
     }
 }

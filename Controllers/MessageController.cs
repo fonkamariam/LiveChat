@@ -26,15 +26,14 @@ namespace LiveChat.Controllers
         private readonly IConfiguration _configuration;
         private readonly Client _supabaseClient;
         private readonly IHubContext<MessagesHub> _hubContext;
-        private readonly UserConnectionManager _userConnectionManager;
+        
 
-
-        public MessageController(IConfiguration configuration, Client supabaseClient, IHubContext<MessagesHub> hubContext, UserConnectionManager userConnectionManager)
+        public MessageController(IConfiguration configuration, Client supabaseClient, IHubContext<MessagesHub> hubContext)
         {
             _configuration = configuration;
             _supabaseClient = supabaseClient;
             _hubContext = hubContext;
-            _userConnectionManager = userConnectionManager;
+            
         }
 
         [HttpGet("GetMissedPayloads"),Authorize]
@@ -57,67 +56,31 @@ namespace LiveChat.Controllers
                     return Unauthorized("Invalid Token");
                 }
 
-                var allPayloads = new List<object>();
-                Console.WriteLine("1");
-                if (response.MessagePayload == null && response.UserPayload == null && response.ConvPayload == null && response.OnlinePayload == null)
+                var allPayloads = new List<string>();  
+                if (response.MissedPayload == null && response.OnlinePayload == null)
                 {
-                    Console.WriteLine("1.5");
-
+                
                     return Ok(allPayloads);
                 }
-                Console.WriteLine("2");
-
-                if (response.MessagePayload != null)
+                
+                if (response.MissedPayload != null)
                 {
-                    Console.WriteLine("2.5");
-
-                    var allMessagePayloads = JsonConvert.DeserializeObject<List<PayLoad>>(response.MessagePayload);
-                    allPayloads.AddRange(allMessagePayloads);
-                    Console.WriteLine("2.6");
-
+                
+                    allPayloads.Add(response.MissedPayload);
+                
                 }
-                Console.WriteLine("3");
-
-                if (response.UserPayload != null)
-                {
-                    Console.WriteLine("3.5");
-
-                    var allUserPayloads = JsonConvert.DeserializeObject<List<UserPayLoad>>(response.UserPayload);
-                    allPayloads.AddRange(allUserPayloads);
-                    Console.WriteLine("3.6");
-
-                }
-                Console.WriteLine("4");
-
-                if (response.ConvPayload != null)
-                {
-                    Console.WriteLine("4.5");
-
-                    var allConvPayloads = JsonConvert.DeserializeObject<List<ConvPayLoad>>(response.ConvPayload);
-                    allPayloads.AddRange(allConvPayloads);
-                    Console.WriteLine("4.6");
-
-                }
-                Console.WriteLine("5");
+                
                 if (response.OnlinePayload != null)
                 {
-                    Console.WriteLine("5.5");
-
-                    var allOnlinePayloads = JsonConvert.DeserializeObject<Dictionary<string, UserStatusDic>>(response.OnlinePayload);
-                    var allOnlinePayloadsArray = allOnlinePayloads.Select(kvp => new { Key = kvp.Key, Value = kvp.Value }).ToArray();
-                    allPayloads.AddRange(allOnlinePayloadsArray);
-                    Console.WriteLine("5.6");
+                    allPayloads.Add(response.OnlinePayload);
+                    
                 }
                 // Clear the payloads
-                response.MessagePayload = null;
-                response.ConvPayload = null;
-                response.UserPayload = null;
+                response.MissedPayload = null;
+               
                 response.OnlinePayload = null;
 
                 await response.Update<Userdto>();
-                Console.WriteLine("6");
-
-                Console.WriteLine("Given all 3 payloads and set them to null");
 
                 return Ok(allPayloads);
             }
@@ -126,433 +89,6 @@ namespace LiveChat.Controllers
                 Console.WriteLine($"Error: {ex.Message}");
                 return BadRequest("Connection Problem first part");
             }
-        }
-        
-        [HttpPost("WebSocketMessage")]
-        public async Task<IActionResult> HandleMessageEvent([FromBody] object payloadObject)
-        {
-            if (payloadObject == null)
-            {
-                Console.WriteLine("the paramerter returned is Null");
-                return BadRequest("Payload is null");
-            }
-            // Cast the payload to a JObject
-            string x =payloadObject.ToString();
-            PayLoad payLoad = JsonConvert.DeserializeObject<PayLoad>(x); 
-            
-            if (payLoad.type == "INSERT")
-            {
-                
-                var recp = payLoad.record.RecpientId;
-                var sender = payLoad.record.SenderId;
-                long convIdJson = payLoad.record.ConvId;
-
-                var response = await _supabaseClient.From<UserProfiledto>()
-                    .Where(n => n.UserId == sender && n.Deleted == false)
-                    .Get();
-                var responseModels = response.Models.FirstOrDefault();
-                if (responseModels == null)
-                {
-                    return BadRequest("Problem getting user profile in ws for conversation");
-                }
-                // for fetching email
-                var response12 = await _supabaseClient.From<Userdto>()
-                    .Where(n => n.Id == sender && n.Deleted == false)
-                    .Get();
-                var responseModels12 = response12.Models.FirstOrDefault();
-                if (responseModels12 == null)
-                {
-
-                    return BadRequest("Problem getting user profile in ws for conversation");
-                }
-                payLoad.record.Status = responseModels.Name;
-                payLoad.record.MessageType = responseModels.LastName;
-
-                // sending status,lastSeen,bio,ProfilePicConv
-                
-
-                payLoad.record.OnlineStatus = responseModels12.Status;
-                payLoad.record.Bio = responseModels.Bio;
-                payLoad.record.LastSeen = responseModels12.LastSeen;
-                payLoad.record.ProfilePic = responseModels.ProfilePic;
-                payLoad.record.Email = responseModels12.Email;
-
-
-
-         
-
-                if (recp!= sender)
-                {
-                    Console.WriteLine("INSERT Message Payload");
-                    _userConnectionManager.TryGetValue(recp.ToString(),out var userInfoo);
-                    Console.WriteLine(userInfoo.IsActive);
-
-                    if (_userConnectionManager.TryGetValue(recp.ToString(), out var userInfo) && userInfo.IsActive)
-                    {
-                        // Send message to active recipient
-                        Console.WriteLine($"INSERT Message Payload: {recp.ToString()}   Active");
-
-                        await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
-                        Console.WriteLine("await _hubcontext");
-
-                    }
-                    else 
-                    {
-                        Console.WriteLine("INSERT Message Payload:    InActive");
-
-                        var getArrayModel = await _supabaseClient.From<Userdto>()
-                         .Where(n => n.Id == recp && n.Deleted == false)
-                         .Single();
-                        //var getArrayModel = getArray.Models.FirstOrDefault();
-                        if (getArrayModel.MessagePayload == null) 
-                        {                      
-                            List<PayLoad> emptyProfilePic = [];
-                            emptyProfilePic.Add(payLoad);
-                            string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
-                            getArrayModel.MessagePayload = jsonListEmpty;
-                            await getArrayModel.Update<Userdto>();
-                            Console.WriteLine("ADded empty");
-                            return Ok("Added to an empty array");
-                        }
-
-
-                        List<PayLoad> allProfilePic = JsonConvert.DeserializeObject<List<PayLoad>>(getArrayModel.MessagePayload);
-                        
-                        allProfilePic.Add(payLoad);
-
-                        string jsonList = JsonConvert.SerializeObject(allProfilePic);
-
-
-                        getArrayModel.MessagePayload = jsonList;
-
-                        await getArrayModel.Update<Userdto>();
-                        Console.WriteLine("aDDed Payload");
-
-                        // Store payload for inactive recipient
-                        Console.WriteLine($"Inserted to Stored for userId:{recp}");
-                        //await StorePayloadForUserAsync(recp, payLoad);
-                    }
-                    //await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
-
-                }
-
-            }
-            else if (payLoad.type == "UPDATE" && payLoad.record.Deleted == false) { 
-                var recp = payLoad.record.RecpientId;
-                var sender = payLoad.record.SenderId;
-
-                if (recp != sender)
-                {
-                    if (_userConnectionManager.TryGetValue(recp.ToString(), out var userInfo) && userInfo.IsActive)
-                    {
-                        // Send message to active recipient
-                        await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
-                    } 
-                    else 
-                    { 
-                        var getArrayModel = await _supabaseClient.From<Userdto>()
-                         .Where(n => n.Id == recp && n.Deleted == false)
-                         .Single();
-                        //var getArrayModel = getArray.Models.FirstOrDefault();
-                        if (getArrayModel.MessagePayload == null)
-                        {
-                            List<PayLoad> emptyProfilePic = [];
-                            emptyProfilePic.Add(payLoad);
-                            string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
-                            getArrayModel.MessagePayload = jsonListEmpty;
-                            await getArrayModel.Update<Userdto>();
-                            Console.WriteLine("ADded empty");
-                            return Ok("Added to an empty array");
-                        }
-
-
-                        List<PayLoad> allProfilePic = JsonConvert.DeserializeObject<List<PayLoad>>(getArrayModel.MessagePayload);
-
-                        allProfilePic.Add(payLoad);
-
-
-
-                        string jsonList = JsonConvert.SerializeObject(allProfilePic);
-
-
-                        getArrayModel.MessagePayload = jsonList;
-
-                        await getArrayModel.Update<Userdto>();
-                        Console.WriteLine("aDDed Payload");
-
-                        // Store payload for inactive recipient
-                        Console.WriteLine($"Inserted to Stored for userId:{recp}");
-                        //await StorePayloadForUserAsync(recp, payLoad);
-                    }
-                    //await _hubContext.Clients.Group(recp.ToString()).SendAsync("ReceiveMessage", payLoad);
-                    if (_userConnectionManager.TryGetValue(sender.ToString(), out var userInfo1) && userInfo1.IsActive)
-                    {
-                        // Send message to active recipient
-                        await _hubContext.Clients.Group(sender.ToString()).SendAsync("ReceiveMessage", payLoad);
-
-                    }
-                    else
-                    {
-                        var getArrayModel = await _supabaseClient.From<Userdto>()
-                         .Where(n => n.Id == sender && n.Deleted == false)
-                         .Single();
-                        //var getArrayModel = getArray.Models.FirstOrDefault();
-                        if (getArrayModel.MessagePayload == null)
-                        {
-                            List<PayLoad> emptyProfilePic = [];
-                            emptyProfilePic.Add(payLoad);
-                            string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
-                            getArrayModel.MessagePayload = jsonListEmpty;
-                            await getArrayModel.Update<Userdto>();
-                            Console.WriteLine("ADded empty");
-                            return Ok("Added to an empty array");
-                        }
-
-
-                        List<PayLoad> allProfilePic = JsonConvert.DeserializeObject<List<PayLoad>>(getArrayModel.MessagePayload);
-
-                        allProfilePic.Add(payLoad);
-
-
-
-                        string jsonList = JsonConvert.SerializeObject(allProfilePic);
-
-
-                        getArrayModel.MessagePayload = jsonList;
-
-                        await getArrayModel.Update<Userdto>();
-                        Console.WriteLine("aDDed Payload");
-
-                        // Store payload for inactive recipient
-                        Console.WriteLine($"Inserted to Stored for userId:{recp}");
-                        //await StorePayloadForUserAsync(recp, payLoad);
-                        Console.WriteLine($"Insert about to Stored for userId:{recp}");
-
-                        //await StorePayloadForUserAsync(recp, payLoad);
-                    }
-                    //await _hubContext.Clients.Group(sender.ToString()).SendAsync("ReceiveMessage", payLoad);
-
-
-                }
-
-            }
-            else if (payLoad.type == "UPDATE" && payLoad.record.Deleted == true)
-            {
-                
-                var final = payLoad.record.Deleteer;
-                var recp = payLoad.record.RecpientId;
-                var sender = payLoad.record.SenderId;
-
-                if (final == recp)
-                {
-                    final = sender;
-                }
-                else
-                {
-                    final = recp;
-                }
-                if (recp != sender)
-                {
-                    if (_userConnectionManager.TryGetValue(final.ToString(), out var userInfo) && userInfo.IsActive)
-                    {
-                        // Send message to active recipient
-                        await _hubContext.Clients.Group(final.ToString()).SendAsync("ReceiveMessage", payLoad);
-
-                    }
-                    else
-                    {
-                        var getArrayModel = await _supabaseClient.From<Userdto>()
-                         .Where(n => n.Id == final && n.Deleted == false)
-                         .Single();
-                        //var getArrayModel = getArray.Models.FirstOrDefault();
-                        if (getArrayModel.MessagePayload == null)
-                        {
-                            List<PayLoad> emptyProfilePic = [];
-                            emptyProfilePic.Add(payLoad);
-                            string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
-                            getArrayModel.MessagePayload = jsonListEmpty;
-                            await getArrayModel.Update<Userdto>();
-                            Console.WriteLine("ADded empty");
-                            return Ok("Added to an empty array");
-                        }
-
-
-                        List<PayLoad> allProfilePic = JsonConvert.DeserializeObject<List<PayLoad>>(getArrayModel.MessagePayload);
-
-                        allProfilePic.Add(payLoad);
-
-
-
-                        string jsonList = JsonConvert.SerializeObject(allProfilePic);
-
-
-                        getArrayModel.MessagePayload = jsonList;
-
-                        await getArrayModel.Update<Userdto>();
-                        Console.WriteLine("aDDed Payload");
-
-                        // Store payload for inactive recipient
-                        Console.WriteLine($"Inserted to Stored for userId:{recp}");
-                        //await StorePayloadForUserAsync(recp, payLoad);
-                        Console.WriteLine($"Insert about to Stored for userId:{recp}");
-
-                        //await StorePayloadForUserAsync(recp, payLoad);
-                    }
-                    //await _hubContext.Clients.Group(final.ToString()).SendAsync("ReceiveMessage", payLoad);
-
-                }
-
-
-            }
-            else
-            {
-                Console.WriteLine("Problem, Message neither Upd,Del,Ins");
-            }          
-
-            return Ok();
-        }
-
-        [HttpPost("wsc")]
-        public async Task<IActionResult> HandleConversationEvent([FromBody] object payloadObject)
-        {
-            if (payloadObject == null)
-            {
-                Console.WriteLine("1");
-
-                return BadRequest("Payload is null");
-            }
-            // Cast the payload to a JObject
-            string x = payloadObject.ToString();
-
-            ConvPayLoad convPayLoad = JsonConvert.DeserializeObject<ConvPayLoad>(x);
-
-            foreach (var user in _userConnectionManager.GetAllUsers())
-            {
-                if (user.Value.IsActive)
-                {
-                    Console.WriteLine("2");
-
-                    await _hubContext.Clients.Client(user.Value.ConnectionId).SendAsync("Receive Conversation", convPayLoad);
-                }
-                else
-                {
-                    Console.WriteLine("3");
-                    long longConv = long.Parse(user.Key);
-                    var getArrayModel = await _supabaseClient.From<Userdto>()
-                     .Where(n => n.Id == longConv && n.Deleted == false)
-                     .Single();
-                    Console.WriteLine("4");
-
-                    //var getArrayModel = getArray.Models.FirstOrDefault();
-                    if (getArrayModel.ConvPayload == null)
-                    {
-                        Console.WriteLine("5");
-
-                        List<ConvPayLoad> emptyProfilePic = [];
-                        emptyProfilePic.Add(convPayLoad);
-                        string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
-                        getArrayModel.ConvPayload = jsonListEmpty;
-                        await getArrayModel.Update<Userdto>();
-                        Console.WriteLine("6");
-
-                        Console.WriteLine("ADded empty");
-                        return Ok("Added to an empty array");
-                    }
-
-                    Console.WriteLine("7");
-
-                    List<ConvPayLoad> allProfilePic = JsonConvert.DeserializeObject<List<ConvPayLoad>>(getArrayModel.ConvPayload);
-
-                    allProfilePic.Add(convPayLoad);
-
-
-
-                    string jsonList = JsonConvert.SerializeObject(allProfilePic);
-
-
-                    getArrayModel.ConvPayload = jsonList;
-                    Console.WriteLine("8");
-
-                    await getArrayModel.Update<Userdto>();
-                    Console.WriteLine("aDDed Payload");
-
-                    // Store payload for inactive recipient
-                    //Console.WriteLine($"Inserted to Stored for userId:{recp}");
-                    //await StorePayloadForUserAsync(recp, payLoad);
-                }
-            }
-            return Ok();
-
-        } 
-
-        [HttpPost("WebSocketUser")]
-        public async Task<IActionResult> HandleUserEvent([FromBody] object payloadObject)
-        {
-            
-            if (payloadObject == null)
-            {
-                Console.WriteLine("the paramerter returned is Null");
-
-                return BadRequest("Payload is null");
-            }
-            // Cast the payload to a JObject
-            string x = payloadObject.ToString();
-            UserPayLoad userPayLoad = JsonConvert.DeserializeObject<UserPayLoad>(x);
-            
-
-            if (userPayLoad.type == "UPDATE")
-            {
-                    foreach (var user in _userConnectionManager.GetAllUsers())
-                    {
-                        if (user.Value.IsActive)
-                        {
-                        
-                        await _hubContext.Clients.Client(user.Value.ConnectionId).SendAsync("Receive UserProfile", userPayLoad);
-                        }
-                        else
-                        {
-                        long longUserProfile = long.Parse(user.Key);
-                        var getArrayModel = await _supabaseClient.From<Userdto>()
-                           .Where(n => n.Id == longUserProfile && n.Deleted == false)
-                           .Single();
-                        
-                        //var getArrayModel = getArray.Models.FirstOrDefault();
-                        if (getArrayModel.UserPayload == null)
-                        {
-                            
-                            List<UserPayLoad> emptyProfilePic = [];
-                            emptyProfilePic.Add(userPayLoad);
-                            string jsonListEmpty = JsonConvert.SerializeObject(emptyProfilePic);
-                            getArrayModel.UserPayload = jsonListEmpty;
-                            await getArrayModel.Update<Userdto>();
-                            return Ok("Added to an empty array");
-                        }
-
-                        
-                        List<UserPayLoad> allProfilePic = JsonConvert.DeserializeObject<List<UserPayLoad>>(getArrayModel.UserPayload);
-
-                        allProfilePic.Add(userPayLoad);
-
-
-
-                        string jsonList = JsonConvert.SerializeObject(allProfilePic);
-
-
-                        getArrayModel.UserPayload = jsonList;
-                        
-                        await getArrayModel.Update<Userdto>();
-                        
-                        // Store payload for inactive recipient
-                        //Console.WriteLine($"Inserted to Stored for userId:{recp}");
-                        //await StorePayloadForUserAsync(recp, payLoad);
-                        //StorePayloadForUser(user.Key, userPayLoad);
-                    }
-                }
-                  
-                return Ok();
-                
-            }
-            return BadRequest();
         }
 
         [HttpPut("zeroNotificationMID"), Authorize]
@@ -1154,10 +690,9 @@ namespace LiveChat.Controllers
                 var responseUpdate = await _supabaseClient.From<Userdto>()
                             .Where(n => n.Id == hey.Id)
                             .Single();
-                responseUpdate.MessagePayload = null;
-                responseUpdate.ConvPayload = null;
-                responseUpdate.UserPayload = null;
-            
+                responseUpdate.MissedPayload = null;
+                responseUpdate.OnlinePayload = null;
+                
                 await responseUpdate.Update<Userdto>();
             
                 var allConvIdResponse = await _supabaseClient.From<ParticipantDto>()
@@ -1285,6 +820,141 @@ namespace LiveChat.Controllers
             }
         }
 
+        [HttpGet("GetSingleConversation"), Authorize] 
+        public async Task<IActionResult> GetSingleConversation([FromQuery] long convId)
+        {
+            var emailClaim = User.Claims.FirstOrDefault(c => c.Type == "Email");
+            if (emailClaim == null)
+            {
+                return StatusCode(15, "Invalid Token");
+            }
+            
+            var email = emailClaim.Value.Split(':')[0].Trim();
+            try
+            {
+            
+                var response = await _supabaseClient.From<Userdto>()
+                    .Where(n => n.Email == email && n.Deleted == false)
+                    .Get();
+                var hey = response.Models.FirstOrDefault();
+                
+                if (hey == null)
+                {
+                    return Unauthorized("Invalid Token");
+                }
+            
+               
+
+                var convResponse = await _supabaseClient.From<ConversationDto>()
+                    .Where(n => n.ConvId == convId)
+                    .Get();
+                var messageIdConv = convResponse.Models.FirstOrDefault();
+                long messageId = messageIdConv.LastMessage;
+                
+            
+            var messResponse = await _supabaseClient.From<MessageDto>()
+                .Where(n => n.Id == messageId && n.Deleted == false)
+                .Get();
+            var getContent = messResponse.Models.FirstOrDefault();
+            
+            
+            string content = getContent.Content;
+            bool isaudio = getContent.IsAudio;
+            bool isimage = getContent.IsImage;
+            long LastMessageId = getContent.Id;
+            bool seenUnseen = getContent.New;
+            long messageSender200 = getContent.SenderId;
+            var messResponseNoti = await _supabaseClient.From<MessageDto>()
+                .Where(n => n.ConvId == convId && n.Deleted == false)
+                .Where(n=>n.RecpientId==hey.Id && n.New == true)
+                .Get();
+            var getContentNoti = messResponseNoti.Models.Count;
+            
+            var userResponse = await _supabaseClient.From<ParticipantDto>()
+                .Where(n => n.ConversationId == convId)
+                .Get();
+            var userRes = userResponse.Models.ToList();
+            var first = userRes[0];
+            var second = userRes[1];
+            long UserId = 0;
+            if (first.UserId == second.UserId)
+            {
+                UserId = second.UserId;
+            }
+            else if (first.UserId != hey.Id)
+            {
+                UserId = first.UserId;
+            }
+            else if (second.UserId!=hey.Id) {
+                UserId = second.UserId;
+            }
+            else
+            {
+                return BadRequest(" Problem when getting UserId from Conversation Id");
+            }
+            if (UserId == 0)
+            {
+                return BadRequest("UserId is 0");
+            }
+            var getProfile = await _supabaseClient.From<UserProfiledto>()
+                .Where(n => n.UserId == UserId)
+                .Get();
+            var getProfile2 = getProfile.Models.FirstOrDefault();
+            var userName = getProfile2.Name;
+            
+            // Get user Email
+            var getConvEmail = await _supabaseClient.From<Userdto>()
+                .Where(n=>n.Id == UserId)
+                .Get();
+            var getEmail = getConvEmail.Models.FirstOrDefault();
+
+            
+            List<string> allProfilePic = getProfile2.ProfilePic != null
+            ? JsonConvert.DeserializeObject<List<string>>(getProfile2.ProfilePic)
+            : null;
+            //allProfilePic.Reverse();
+            if (allProfilePic != null)
+            {
+                allProfilePic.Reverse();
+                // Console.WriteLine("REversed HHHH");
+            }
+            
+
+            CustomConv xz = new CustomConv
+            {
+                UserName = userName,
+                UpdatedTime = messageIdConv.UpdatedTime,
+                Message = content,
+                Seen = seenUnseen,
+                UserId = UserId,
+                ConvId = convId,
+                LastName = getProfile2.LastName,
+                MessageId = LastMessageId,
+                Status = getEmail.Status,
+                NotificationCount= getContentNoti,
+                LastSeen = getEmail.LastSeen,
+                Bio = getProfile2.Bio,
+                Email = getEmail.Email,
+                IsAudio= isaudio,
+                IsImage = isimage,
+                ProfilePicConv= allProfilePic,
+                MessageSender = messageSender200,
+                Deleted = getProfile2.Deleted
+            }; 
+        
+                    
+            
+
+            return Ok(xz);
+                                
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return StatusCode(500,"Connection Problem, Backend"); 
+            }
+        }
+        
         [HttpDelete("DeleteConversation"), Authorize]  
         
         public async Task<IActionResult> DeleteConversaion([FromBody] DeleteConv deleteConv)
